@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session as DBSession
+from sqlalchemy.orm import Session as DBSession, selectinload
 
 from ..auth import verify_token
 from ..database import get_db
@@ -44,7 +44,14 @@ def get_session(
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> Session:
-    session = db.query(Session).filter(Session.id == session_id).first()
+    session = (
+        db.query(Session)
+        .options(
+            selectinload(Session.scenes).selectinload(Scene.checks)
+        )
+        .filter(Session.id == session_id)
+        .first()
+    )
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
     return session

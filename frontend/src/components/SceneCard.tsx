@@ -1,47 +1,61 @@
-import { useRef, useState } from "react";
-import { CSS } from "@dnd-kit/utilities";
-import { useSortable } from "@dnd-kit/sortable";
-import { MarkdownBody } from "./MarkdownBody";
-import type { Scene } from "../types";
+import { useRef, useState } from 'react'
+import { CSS } from '@dnd-kit/utilities'
+import { useSortable } from '@dnd-kit/sortable'
+import type { Character, Check, Scene } from '../types'
+import { SceneEditor } from './SceneEditor'
+import { CheckWidget } from './CheckWidget'
 
-interface Props {
-  scene: Scene;
-  onUpdate: (id: number, patch: { title?: string; body?: string }) => void;
-  onDelete: (id: number) => void;
+interface SlashItem {
+  type: 'skill' | 'save'
+  subtype: string
+  label: string
 }
 
-export function SceneCard({ scene, onUpdate, onDelete }: Props) {
-  const [collapsed, setCollapsed] = useState(false);
-  const [editingTitle, setEditingTitle] = useState(false);
-  const [editingBody, setEditingBody] = useState(false);
-  const [titleDraft, setTitleDraft] = useState(scene.title);
-  const [bodyDraft, setBodyDraft] = useState(scene.body);
+interface Props {
+  scene: Scene
+  characters: Character[]
+  sessionId: number
+  onUpdate: (id: number, patch: { title?: string; body?: string }) => void
+  onDelete: (id: number) => void
+  onSelectSlashItem: (sceneId: number, item: SlashItem) => void
+}
 
-  const titleRef = useRef<HTMLInputElement>(null);
+export function SceneCard({
+  scene,
+  characters,
+  sessionId,
+  onUpdate,
+  onDelete,
+  onSelectSlashItem,
+}: Props) {
+  const [collapsed, setCollapsed] = useState(false)
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [titleDraft, setTitleDraft] = useState(scene.title)
+
+  const titleRef = useRef<HTMLInputElement>(null)
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: scene.id });
+    useSortable({ id: scene.id })
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.4 : 1,
-  };
+  }
 
   function commitTitle() {
-    setEditingTitle(false);
-    const trimmed = titleDraft.trim();
+    setEditingTitle(false)
+    const trimmed = titleDraft.trim()
     if (trimmed && trimmed !== scene.title) {
-      onUpdate(scene.id, { title: trimmed });
+      onUpdate(scene.id, { title: trimmed })
     } else {
-      setTitleDraft(scene.title);
+      setTitleDraft(scene.title)
     }
   }
 
-  function commitBody() {
-    setEditingBody(false);
-    if (bodyDraft !== scene.body) {
-      onUpdate(scene.id, { body: bodyDraft });
+  function handleSaveBody(md: string) {
+    if (md !== scene.body) {
+      onUpdate(scene.id, { body: md })
     }
   }
 
@@ -60,10 +74,10 @@ export function SceneCard({ scene, onUpdate, onDelete }: Props) {
             onChange={(e) => setTitleDraft(e.target.value)}
             onBlur={commitTitle}
             onKeyDown={(e) => {
-              if (e.key === "Enter") commitTitle();
-              if (e.key === "Escape") {
-                setTitleDraft(scene.title);
-                setEditingTitle(false);
+              if (e.key === 'Enter') commitTitle()
+              if (e.key === 'Escape') {
+                setTitleDraft(scene.title)
+                setEditingTitle(false)
               }
             }}
             autoFocus
@@ -82,9 +96,9 @@ export function SceneCard({ scene, onUpdate, onDelete }: Props) {
           <button
             className="btn-icon"
             onClick={() => setCollapsed((c) => !c)}
-            title={collapsed ? "Expand" : "Collapse"}
+            title={collapsed ? 'Expand' : 'Collapse'}
           >
-            {collapsed ? "▶" : "▼"}
+            {collapsed ? '▶' : '▼'}
           </button>
           <button
             className="btn-icon btn-danger"
@@ -98,35 +112,29 @@ export function SceneCard({ scene, onUpdate, onDelete }: Props) {
 
       {!collapsed && (
         <div className="scene-body">
-          {editingBody ? (
-            <textarea
-              className="scene-body-textarea"
-              value={bodyDraft}
-              onChange={(e) => setBodyDraft(e.target.value)}
-              onBlur={commitBody}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  setBodyDraft(scene.body);
-                  setEditingBody(false);
-                }
-              }}
-              autoFocus
-            />
-          ) : (
-            <div
-              className="scene-body-preview"
-              onClick={() => setEditingBody(true)}
-              title="Click to edit"
-            >
-              {bodyDraft ? (
-                <MarkdownBody content={bodyDraft} />
-              ) : (
-                <span className="placeholder">Click to add content…</span>
-              )}
+          <SceneEditor
+            content={scene.body}
+            onSave={handleSaveBody}
+            onSelectSlashItem={(item) => onSelectSlashItem(scene.id, item)}
+          />
+
+          {scene.checks.length > 0 && (
+            <div className="scene-checks">
+              {scene.checks.map((check: Check) => (
+                <CheckWidget
+                  key={check.id}
+                  check={check}
+                  characters={characters}
+                  sessionId={sessionId}
+                  onDelete={() => {
+                    // handled inside widget
+                  }}
+                />
+              ))}
             </div>
           )}
         </div>
       )}
     </div>
-  );
+  )
 }

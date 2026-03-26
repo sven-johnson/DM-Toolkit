@@ -14,6 +14,7 @@
   --accent-hover:#4a58ee;
   --danger:      #e05252;
   --danger-hover:#cc3c3c;
+  --success:     #4caf80;
 
   --radius:      6px;
   --radius-lg:   10px;
@@ -50,6 +51,60 @@ a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 /* ============================================================
+   Nav
+   ============================================================ */
+.nav {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.nav-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  height: 48px;
+}
+
+.nav-brand {
+  font-weight: 700;
+  color: var(--text-heading);
+  font-size: 1rem;
+  letter-spacing: -0.5px;
+}
+
+.nav-links {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.nav-link {
+  color: var(--text-muted);
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: color 0.15s, background 0.15s;
+  text-decoration: none;
+}
+
+.nav-link:hover {
+  color: var(--text);
+  background: var(--border);
+  text-decoration: none;
+}
+
+.nav-link.active {
+  color: var(--accent);
+  background: rgba(91, 106, 255, 0.12);
+}
+
+/* ============================================================
    Layout
    ============================================================ */
 #root {
@@ -57,7 +112,7 @@ a:hover { text-decoration: underline; }
 }
 
 .page {
-  max-width: 860px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 2rem 1.5rem 4rem;
 }
@@ -92,6 +147,162 @@ a:hover { text-decoration: underline; }
 .back-link:hover { color: var(--text); text-decoration: none; }
 
 /* ============================================================
+   Session layout (two column)
+   ============================================================ */
+.session-layout {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.session-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-sidebar {
+  width: 280px;
+  min-width: 240px;
+  flex-shrink: 0;
+}
+
+.sidebar-title {
+  font-weight: 600;
+  color: var(--text-heading);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+}
+
+.sidebar-character-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* ============================================================
+   Character card (sidebar)
+   ============================================================ */
+.character-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.625rem 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  outline: none;
+}
+
+.character-card:hover,
+.character-card:focus {
+  border-color: var(--accent);
+  background: rgba(91, 106, 255, 0.05);
+}
+
+.character-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.character-card-name {
+  font-weight: 600;
+  color: var(--text-heading);
+  font-size: 0.9rem;
+}
+
+.character-card-level {
+  font-size: 0.75rem;
+  color: var(--accent);
+  background: rgba(91, 106, 255, 0.12);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.character-card-meta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+.character-card-rolls {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.text-muted { color: var(--text-muted); }
+
+/* ============================================================
+   Character modal
+   ============================================================ */
+.character-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.character-modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  max-width: 700px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.character-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.character-modal-sub {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.character-modal-cols {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.modal-section-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.modal-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.2rem 0;
+  font-size: 0.85rem;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.modal-stat-row strong {
+  color: var(--text-heading);
+}
+
+/* ============================================================
    Inputs & forms
    ============================================================ */
 .input,
@@ -121,6 +332,12 @@ textarea.scene-body-textarea {
   line-height: 1.6;
   font-size: 0.9rem;
   padding: 0.75rem;
+}
+
+.small-input {
+  padding: 0.25rem 0.4rem;
+  font-size: 0.85rem;
+  width: auto;
 }
 
 .create-form {
@@ -340,6 +557,619 @@ input.scene-title-input {
   color: var(--text-muted);
   font-style: italic;
   font-size: 0.875rem;
+}
+
+.scene-checks {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* ============================================================
+   Tiptap editor
+   ============================================================ */
+.scene-editor {
+  position: relative;
+}
+
+.tiptap-editor {
+  outline: none;
+}
+
+.tiptap-editor .ProseMirror {
+  min-height: 80px;
+  padding: 0.5rem 0.25rem;
+  outline: none;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--text);
+}
+
+.tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--text-muted);
+  font-style: italic;
+  pointer-events: none;
+  height: 0;
+}
+
+.tiptap-editor .ProseMirror p { margin: 0 0 0.5em; }
+.tiptap-editor .ProseMirror p:last-child { margin-bottom: 0; }
+.tiptap-editor .ProseMirror h1,
+.tiptap-editor .ProseMirror h2,
+.tiptap-editor .ProseMirror h3 {
+  color: var(--text-heading);
+  margin: 0.75em 0 0.25em;
+}
+.tiptap-editor .ProseMirror strong { color: var(--text-heading); }
+.tiptap-editor .ProseMirror ul,
+.tiptap-editor .ProseMirror ol { padding-left: 1.4em; margin: 0.4em 0; }
+.tiptap-editor .ProseMirror li { margin-bottom: 0.2em; }
+.tiptap-editor .ProseMirror code {
+  font-family: var(--mono);
+  font-size: 0.85em;
+  background: rgba(255,255,255,0.07);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+}
+
+/* ============================================================
+   Formatting toolbar
+   ============================================================ */
+.formatting-toolbar {
+  display: flex;
+  gap: 0.2rem;
+  padding: 0.25rem 0.25rem 0.25rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.25rem;
+}
+
+.toolbar-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.8rem;
+  font-family: var(--sans);
+  line-height: 1.4;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.toolbar-btn:hover {
+  color: var(--text);
+  background: var(--border);
+}
+
+.toolbar-btn.active {
+  color: var(--accent);
+  background: rgba(91, 106, 255, 0.12);
+  border-color: rgba(91, 106, 255, 0.3);
+}
+
+/* ============================================================
+   Slash command menu
+   ============================================================ */
+.slash-menu {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  min-width: 200px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 0.25rem;
+}
+
+.slash-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-family: var(--sans);
+  padding: 0.4rem 0.6rem;
+  transition: background 0.1s;
+}
+
+.slash-menu-item:hover {
+  background: var(--border);
+}
+
+.slash-menu-item.selected {
+  background: rgba(91, 106, 255, 0.2);
+  color: var(--accent);
+}
+
+.slash-menu-empty {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  padding: 0.5rem 0.6rem;
+  font-style: italic;
+}
+
+/* ============================================================
+   Check widget
+   ============================================================ */
+.check-widget {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.check-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.check-icon {
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.check-label {
+  font-weight: 600;
+  color: var(--text-heading);
+  flex: 1;
+}
+
+.check-dc-label {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.check-character-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 0.5rem;
+}
+
+.filter-toggle {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-family: var(--sans);
+  padding: 0.2rem 0.5rem;
+  transition: all 0.15s;
+}
+
+.filter-toggle:hover {
+  border-color: var(--text-muted);
+  color: var(--text);
+}
+
+.filter-toggle.active {
+  background: rgba(91, 106, 255, 0.15);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.check-character-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.check-character-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.2rem 0;
+}
+
+.check-char-name {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.check-char-mod {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  width: 36px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.check-char-pct {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  width: 40px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.check-no-chars {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.85rem;
+}
+
+/* ============================================================
+   Roll input
+   ============================================================ */
+.roll-input {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 0.85rem;
+  font-family: var(--sans);
+  padding: 0.2rem 0.4rem;
+  width: 56px;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.roll-input:focus {
+  border-color: var(--border-focus);
+}
+
+.roll-input::-webkit-inner-spin-button,
+.roll-input::-webkit-outer-spin-button {
+  opacity: 1;
+}
+
+/* ============================================================
+   Pass / fail indicators
+   ============================================================ */
+.pass-indicator {
+  color: var(--success);
+  font-weight: 600;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+
+.fail-indicator {
+  color: var(--danger);
+  font-weight: 600;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+
+/* ============================================================
+   Pending check modal
+   ============================================================ */
+.pending-check-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.pending-check-modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  max-width: 400px;
+  width: 100%;
+}
+
+.pending-check-modal h3 {
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+.pending-check-field {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.pending-check-field label {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.pending-check-chars {
+  margin-bottom: 1rem;
+}
+
+.pending-check-chars > label {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.pending-check-char-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.pending-check-char-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.pending-check-char-option input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.pending-check-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* ============================================================
+   Character manager
+   ============================================================ */
+.character-manager-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.character-manager-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.character-manager-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  flex-wrap: wrap;
+}
+
+.character-manager-card-body {
+  padding: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.char-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.char-delete-confirm {
+  font-size: 0.8rem;
+  color: var(--danger);
+}
+
+.inline-edit-display {
+  cursor: pointer;
+  padding: 0.2rem 0.3rem;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  font-size: 0.9rem;
+  color: var(--text-heading);
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.inline-edit-display:hover {
+  background: var(--border);
+  border-color: var(--border);
+}
+
+.inline-edit-input {
+  background: var(--bg-input);
+  border: 1px solid var(--border-focus);
+  border-radius: 3px;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  padding: 0.2rem 0.4rem;
+  outline: none;
+}
+
+.inline-edit-number {
+  width: 64px;
+}
+
+.char-inline-name { font-weight: 600; min-width: 120px; }
+.char-inline-class { min-width: 80px; }
+.char-inline-subclass { min-width: 80px; color: var(--text-muted); }
+.char-inline-level { font-size: 0.8rem; }
+
+.char-section {
+  margin-bottom: 1rem;
+}
+
+.char-section-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+/* ============================================================
+   Ability, skill, save grids
+   ============================================================ */
+.ability-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.ability-cell {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem;
+}
+
+.ability-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.35rem;
+}
+
+.ability-fields {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.ability-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+}
+
+.ability-field-group label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.skill-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.save-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+.combat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+.skill-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.skill-cell label {
+  flex: 1;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.skill-cell .input.small-input {
+  width: 60px;
+  flex-shrink: 0;
+}
+
+.char-ability-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.ability-summary-item {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  background: var(--bg);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+
+/* ============================================================
+   Roll History page
+   ============================================================ */
+.roll-history-session {
+  margin-bottom: 2rem;
+}
+
+.roll-history-session-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-heading);
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.roll-history-check {
+  margin-bottom: 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.roll-history-check-header {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-heading);
+  background: rgba(255,255,255,0.02);
+  border-bottom: 1px solid var(--border);
+}
+
+.roll-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.roll-history-table th,
+.roll-history-table td {
+  padding: 0.4rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.roll-history-table th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.roll-history-table tr:last-child td {
+  border-bottom: none;
 }
 
 /* ============================================================
