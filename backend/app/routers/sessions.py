@@ -1,11 +1,12 @@
+import uuid as uuid_lib
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session as DBSession, selectinload
 
 from ..auth import verify_token
 from ..database import get_db
-from ..models import Scene, Session
+from ..models import Campaign, Check, Scene, Session, SessionScene, Storyline
 from ..schemas import (
-    SceneCreate,
     SceneOut,
     SceneReorder,
     SessionCreate,
@@ -17,22 +18,74 @@ from ..schemas import (
 router = APIRouter()
 
 
-@router.get("", response_model=list[SessionOut])
-def list_sessions(
-    db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
-) -> list[Session]:
-    return db.query(Session).order_by(Session.created_at.desc(), Session.id.desc()).all()
+def _load_session(session_id: int, db: DBSession) -> Session:
+    return (
+        db.query(Session)
+        .options(
+            selectinload(Session.session_scenes)
+            .selectinload(SessionScene.scene)
+            .selectinload(Scene.checks)
+            .selectinload(Check.rolls)
+        )
+        .options(
+            selectinload(Session.session_scenes)
+            .selectinload(SessionScene.scene)
+            .selectinload(Scene.enemies)
+        )
+        .options(
+            selectinload(Session.session_scenes)
+            .selectinload(SessionScene.scene)
+            .selectinload(Scene.shop_items)
+        )
+        .filter(Session.id == session_id)
+        .first()
+    )
 
 
 @router.post("", response_model=SessionOut, status_code=status.HTTP_201_CREATED)
 def create_session(
+    campaign_id: int,
     body: SessionCreate,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> Session:
-    session = Session(**body.model_dump())
+    if not db.query(Campaign).filter(Campaign.id == campaign_id).first():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+
+    storyline_id = body.storyline_id
+    if storyline_id and not db.query(Storyline).filter(
+        Storyline.id == storyline_id, Storyline.campaign_id == campaign_id
+    ).first():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Storyline not found")
+
+    data = body.model_dump(exclude={"storyline_id"})
+    session = Session(
+        uuid=str(uuid_lib.uuid4()),
+        campaign_id=campaign_id,
+        active_storyline_id=storyline_id,
+        **data,
+    )
     db.add(session)
+    db.flush()
+
+    # Auto-add the first available scene from the selected storyline
+    if storyline_id:
+        used_scene_ids = {
+            row[0] for row in db.query(SessionScene.scene_id).all()
+        }
+        first_scene = (
+            db.query(Scene)
+            .filter(
+                Scene.storyline_id == storyline_id,
+                Scene.id.notin_(used_scene_ids),
+            )
+            .order_by(Scene.order_index)
+            .first()
+        )
+        if first_scene:
+            ss = SessionScene(session_id=session.id, scene_id=first_scene.id, order_index=0)
+            db.add(ss)
+
     db.commit()
     db.refresh(session)
     return session
@@ -44,14 +97,7 @@ def get_session(
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> Session:
-    session = (
-        db.query(Session)
-        .options(
-            selectinload(Session.scenes).selectinload(Scene.checks)
-        )
-        .filter(Session.id == session_id)
-        .first()
-    )
+    session = _load_session(session_id, db)
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
     return session
@@ -87,25 +133,68 @@ def delete_session(
     db.commit()
 
 
-@router.post(
-    "/{session_id}/scenes",
-    response_model=SceneOut,
-    status_code=status.HTTP_201_CREATED,
-)
-def create_scene(
+@router.post("/{session_id}/next-scene", response_model=SceneOut)
+def add_next_scene(
     session_id: int,
-    body: SceneCreate,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> Scene:
-    if not db.query(Session).filter(Session.id == session_id).first():
+    session = db.query(Session).filter(Session.id == session_id).first()
+    if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
-    order_index = db.query(Scene).filter(Scene.session_id == session_id).count()
-    scene = Scene(session_id=session_id, order_index=order_index, **body.model_dump())
-    db.add(scene)
+    if not session.active_storyline_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No active storyline set for this session",
+        )
+
+    # Scenes already linked to any session
+    used_scene_ids = {row[0] for row in db.query(SessionScene.scene_id).all()}
+
+    next_scene = (
+        db.query(Scene)
+        .filter(
+            Scene.storyline_id == session.active_storyline_id,
+            Scene.id.notin_(used_scene_ids),
+        )
+        .order_by(Scene.order_index)
+        .first()
+    )
+    if not next_scene:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No more scenes available in this storyline",
+        )
+
+    next_order = db.query(SessionScene).filter(SessionScene.session_id == session_id).count()
+    ss = SessionScene(session_id=session_id, scene_id=next_scene.id, order_index=next_order)
+    db.add(ss)
     db.commit()
-    db.refresh(scene)
-    return scene
+    db.refresh(next_scene)
+    return next_scene
+
+
+@router.delete(
+    "/{session_id}/scenes/{scene_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+def remove_scene_from_session(
+    session_id: int,
+    scene_id: int,
+    db: DBSession = Depends(get_db),
+    _: str = Depends(verify_token),
+) -> None:
+    ss = (
+        db.query(SessionScene)
+        .filter(
+            SessionScene.session_id == session_id,
+            SessionScene.scene_id == scene_id,
+        )
+        .first()
+    )
+    if not ss:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scene not in session")
+    db.delete(ss)
+    db.commit()
 
 
 @router.put("/{session_id}/scenes/reorder", status_code=status.HTTP_204_NO_CONTENT)
@@ -115,9 +204,11 @@ def reorder_scenes(
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> None:
-    scenes = db.query(Scene).filter(Scene.session_id == session_id).all()
-    scene_map = {s.id: s for s in scenes}
+    session_scenes = (
+        db.query(SessionScene).filter(SessionScene.session_id == session_id).all()
+    )
+    ss_map = {ss.scene_id: ss for ss in session_scenes}
     for index, scene_id in enumerate(body.scene_ids):
-        if scene_id in scene_map:
-            scene_map[scene_id].order_index = index
+        if scene_id in ss_map:
+            ss_map[scene_id].order_index = index
     db.commit()

@@ -1,10 +1,16 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { LoginPage } from './pages/LoginPage'
-import { SessionDetailPage } from './pages/SessionDetailPage'
+import { CampaignsPage } from './pages/CampaignsPage'
 import { SessionsPage } from './pages/SessionsPage'
+import { SessionDetailPage } from './pages/SessionDetailPage'
+import { StorylineDetailPage } from './pages/StorylineDetailPage'
+import { StorylinesPage } from './pages/StorylinesPage'
 import { CharactersPage } from './pages/CharactersPage'
 import { RollHistoryPage } from './pages/RollHistoryPage'
+import { WikiListPage } from './pages/WikiListPage'
+import { WikiArticlePage } from './pages/WikiArticlePage'
+import { WikiEditorPage } from './pages/WikiEditorPage'
 import { Nav } from './components/Nav'
 
 const queryClient = new QueryClient({
@@ -32,12 +38,20 @@ function AppLayout() {
           path="/"
           element={
             <RequireAuth>
+              <CampaignsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/campaigns/:campaignId/sessions"
+          element={
+            <RequireAuth>
               <SessionsPage />
             </RequireAuth>
           }
         />
         <Route
-          path="/sessions/:id"
+          path="/campaigns/:campaignId/sessions/:sessionId"
           element={
             <RequireAuth>
               <SessionDetailPage />
@@ -45,7 +59,23 @@ function AppLayout() {
           }
         />
         <Route
-          path="/characters"
+          path="/campaigns/:campaignId/storylines"
+          element={
+            <RequireAuth>
+              <StorylinesPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/campaigns/:campaignId/storylines/:storylineId"
+          element={
+            <RequireAuth>
+              <StorylineDetailPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/campaigns/:campaignId/characters"
           element={
             <RequireAuth>
               <CharactersPage />
@@ -53,10 +83,34 @@ function AppLayout() {
           }
         />
         <Route
-          path="/characters/:id"
+          path="/campaigns/:campaignId/wiki"
           element={
             <RequireAuth>
-              <CharactersPage />
+              <WikiListPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/campaigns/:campaignId/wiki/new"
+          element={
+            <RequireAuth>
+              <WikiEditorPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/campaigns/:campaignId/wiki/:articleId/edit"
+          element={
+            <RequireAuth>
+              <WikiEditorPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/campaigns/:campaignId/wiki/:articleId"
+          element={
+            <RequireAuth>
+              <WikiArticlePage />
             </RequireAuth>
           }
         />

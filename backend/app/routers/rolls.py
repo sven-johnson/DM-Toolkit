@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session as DBSession
 
 from ..auth import verify_token
 from ..database import get_db
-from ..models import Check, Roll, Scene, Session
+from ..models import Check, Roll, Scene, Session, SessionScene
 from ..schemas import RollHistoryItem, RollOut, RollUpsert, SessionRollOut
 
 router = APIRouter()
@@ -64,7 +64,8 @@ def get_session_rolls(
         db.query(Roll)
         .join(Roll.check)
         .join(Check.scene)
-        .filter(Scene.session_id == session_id)
+        .join(SessionScene, SessionScene.scene_id == Scene.id)
+        .filter(SessionScene.session_id == session_id)
         .all()
     )
     result = []
@@ -92,7 +93,8 @@ def get_roll_history(
         db.query(Roll)
         .join(Roll.check)
         .join(Check.scene)
-        .join(Scene.session)
+        .outerjoin(SessionScene, SessionScene.scene_id == Scene.id)
+        .outerjoin(Session, Session.id == SessionScene.session_id)
         .order_by(Session.id.desc(), Scene.id, Check.id, Roll.id)
         .all()
     )
@@ -100,7 +102,9 @@ def get_roll_history(
     for roll in rolls:
         check = roll.check
         scene = check.scene
-        session = scene.session
+        # Get first session association if any
+        session_scene = scene.session_scenes[0] if scene.session_scenes else None
+        session = session_scene.session if session_scene else None
         result.append(
             RollHistoryItem(
                 id=roll.id,
@@ -113,8 +117,8 @@ def get_roll_history(
                 character_ids=check.character_ids if check.character_ids else [],
                 scene_id=scene.id,
                 scene_title=scene.title,
-                session_id=session.id,
-                session_title=session.title,
+                session_id=session.id if session else None,
+                session_title=session.title if session else None,
             )
         )
     return result

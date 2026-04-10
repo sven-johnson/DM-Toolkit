@@ -13,7 +13,7 @@ interface DeleteRollBody {
   characterId: number
 }
 
-export function useUpsertRoll(sessionId: number) {
+export function useUpsertRoll(queryKey: unknown[]) {
   const queryClient = useQueryClient()
   return useMutation<Roll, Error, UpsertRollBody>({
     mutationFn: async ({ checkId, characterId, dieResult }) => {
@@ -24,28 +24,26 @@ export function useUpsertRoll(sessionId: number) {
       return data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['session', sessionId] })
-      queryClient.invalidateQueries({ queryKey: ['sessionRolls', sessionId] })
+      queryClient.invalidateQueries({ queryKey })
       queryClient.invalidateQueries({ queryKey: ['rollHistory'] })
     },
   })
 }
 
-export function useDeleteRoll(sessionId: number) {
+export function useDeleteRoll(queryKey: unknown[]) {
   const queryClient = useQueryClient()
   return useMutation<void, Error, DeleteRollBody>({
     mutationFn: async ({ checkId, characterId }) => {
       await apiClient.delete(`/rolls/${checkId}/${characterId}`)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['session', sessionId] })
-      queryClient.invalidateQueries({ queryKey: ['sessionRolls', sessionId] })
+      queryClient.invalidateQueries({ queryKey })
       queryClient.invalidateQueries({ queryKey: ['rollHistory'] })
     },
   })
 }
 
-export function useSessionRolls(sessionId: number) {
+export function useSessionRolls(campaignId: number, sessionId: number) {
   return useQuery<SessionRollOut[]>({
     queryKey: ['sessionRolls', sessionId],
     queryFn: async () => {
@@ -54,6 +52,7 @@ export function useSessionRolls(sessionId: number) {
       )
       return data
     },
+    enabled: !!sessionId && !!campaignId,
   })
 }
 

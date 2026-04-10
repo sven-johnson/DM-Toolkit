@@ -1,68 +1,80 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import apiClient from "../api/client";
-import type { Scene, SessionWithScenes } from "../types";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import apiClient from '../api/client'
+import type { Scene, SessionWithScenes } from '../types'
 
-export function useSession(id: number) {
+export function useSession(campaignId: number, sessionId: number) {
   return useQuery<SessionWithScenes>({
-    queryKey: ["session", id],
+    queryKey: ['session', sessionId],
     queryFn: async () => {
-      const { data } = await apiClient.get<SessionWithScenes>(`/sessions/${id}`);
-      return data;
+      const { data } = await apiClient.get<SessionWithScenes>(
+        `/campaigns/${campaignId}/sessions/${sessionId}`,
+      )
+      return data
     },
-  });
+    enabled: !!sessionId,
+  })
 }
 
-export function useCreateScene(sessionId: number) {
-  const queryClient = useQueryClient();
-  return useMutation<Scene, Error, { title: string; body?: string }>({
+export function useUpdateSession(campaignId: number, sessionId: number) {
+  const queryClient = useQueryClient()
+  return useMutation<
+    SessionWithScenes,
+    Error,
+    { title?: string; date?: string | null; recap_notes?: string; active_storyline_id?: number | null }
+  >({
     mutationFn: async (body) => {
-      const { data } = await apiClient.post<Scene>(
-        `/sessions/${sessionId}/scenes`,
+      const { data } = await apiClient.put<SessionWithScenes>(
+        `/campaigns/${campaignId}/sessions/${sessionId}`,
         body,
-      );
-      return data;
+      )
+      return data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["session", sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['session', sessionId] })
     },
-  });
+  })
 }
 
-export function useUpdateScene(sessionId: number) {
-  const queryClient = useQueryClient();
-  return useMutation<Scene, Error, { id: number; title?: string; body?: string }>({
-    mutationFn: async ({ id, ...body }) => {
-      const { data } = await apiClient.put<Scene>(`/scenes/${id}`, body);
-      return data;
+export function useAddNextScene(campaignId: number, sessionId: number) {
+  const queryClient = useQueryClient()
+  return useMutation<Scene, Error, void>({
+    mutationFn: async () => {
+      const { data } = await apiClient.post<Scene>(
+        `/campaigns/${campaignId}/sessions/${sessionId}/next-scene`,
+      )
+      return data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["session", sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['session', sessionId] })
     },
-  });
+  })
 }
 
-export function useDeleteScene(sessionId: number) {
-  const queryClient = useQueryClient();
+export function useRemoveSceneFromSession(campaignId: number, sessionId: number) {
+  const queryClient = useQueryClient()
   return useMutation<void, Error, number>({
-    mutationFn: async (id) => {
-      await apiClient.delete(`/scenes/${id}`);
+    mutationFn: async (sceneId) => {
+      await apiClient.delete(
+        `/campaigns/${campaignId}/sessions/${sessionId}/scenes/${sceneId}`,
+      )
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["session", sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['session', sessionId] })
     },
-  });
+  })
 }
 
-export function useReorderScenes(sessionId: number) {
-  const queryClient = useQueryClient();
+export function useReorderSessionScenes(campaignId: number, sessionId: number) {
+  const queryClient = useQueryClient()
   return useMutation<void, Error, number[]>({
     mutationFn: async (sceneIds) => {
-      await apiClient.put(`/sessions/${sessionId}/scenes/reorder`, {
-        scene_ids: sceneIds,
-      });
+      await apiClient.put(
+        `/campaigns/${campaignId}/sessions/${sessionId}/scenes/reorder`,
+        { scene_ids: sceneIds },
+      )
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["session", sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['session', sessionId] })
     },
-  });
+  })
 }

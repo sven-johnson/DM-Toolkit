@@ -18,14 +18,38 @@ import { Markdown } from 'tiptap-markdown'
 import type { SuggestionProps, SuggestionKeyDownProps } from '@tiptap/suggestion'
 import { SKILLS, SAVES } from '../constants/dnd'
 import { FormattingToolbar } from './FormattingToolbar'
+import { CheckLine } from './CheckLineExtension'
+import { createWikiLinkExtension } from './WikiLinkExtension'
 
+interface CheckSlashItem {
+  type: 'skill' | 'save'
+  subtype: string
+  label: string
+}
+
+interface WikiSlashItem {
+  type: 'wiki'
+  articleId: number
+  label: string
+  category: string
+}
+
+type AnySlashItem = CheckSlashItem | WikiSlashItem
+
+// Public interface: only check items bubble up to the parent
 interface SlashItem {
   type: 'skill' | 'save'
   subtype: string
   label: string
 }
 
-const ALL_SLASH_ITEMS: SlashItem[] = [
+interface WikiArticleRef {
+  id: number
+  title: string
+  category: string
+}
+
+const ALL_CHECK_ITEMS: CheckSlashItem[] = [
   ...SKILLS.map((s) => ({ type: 'skill' as const, subtype: s.key, label: s.name })),
   ...SAVES.map((s) => ({ type: 'save' as const, subtype: s.key, label: s.name })),
 ]
@@ -41,13 +65,23 @@ function fuzzyMatch(query: string, text: string): boolean {
   return qi === q.length
 }
 
+function getCheckTitle(item: CheckSlashItem): string {
+  if (item.type === 'skill') {
+    const sub = item.subtype.replace(/_/g, ' ')
+    return `${sub.charAt(0).toUpperCase() + sub.slice(1)} Check`
+  } else {
+    const sub = item.subtype.replace(/_save$/, '').replace(/_/g, ' ')
+    return `${sub.charAt(0).toUpperCase() + sub.slice(1)} Save`
+  }
+}
+
 // ---------------------------------------------------------------------------
-// Slash command list component
+// Slash command list
 // ---------------------------------------------------------------------------
 
 interface SlashCommandListProps {
-  items: SlashItem[]
-  command: (item: SlashItem) => void
+  items: AnySlashItem[]
+  command: (item: AnySlashItem) => void
 }
 
 interface SlashCommandListHandle {
@@ -76,18 +110,16 @@ const SlashCommandList = forwardRef<SlashCommandListHandle, SlashCommandListProp
           if (items[selectedIndex]) command(items[selectedIndex])
           return true
         }
-        if (event.key === 'Escape') {
-          return true
-        }
+        if (event.key === 'Escape') return true
         return false
       },
     }))
 
     return (
       <div className="slash-menu">
-        {items.slice(0, 8).map((item, index) => (
+        {items.slice(0, 20).map((item, index) => (
           <button
-            key={`${item.type}-${item.subtype}`}
+            key={item.type === 'wiki' ? `wiki-${item.articleId}` : `${item.type}-${item.subtype}`}
             className={`slash-menu-item${index === selectedIndex ? ' selected' : ''}`}
             onMouseDown={(e) => {
               e.preventDefault()
@@ -95,7 +127,11 @@ const SlashCommandList = forwardRef<SlashCommandListHandle, SlashCommandListProp
             }}
             type="button"
           >
-            {item.type === 'skill' ? '⚠️' : '🔴'} {item.label}
+            {item.type === 'wiki'
+              ? <><span className="slash-menu-wiki-icon">📖</span> {item.label}</>
+              : item.type === 'skill'
+              ? <>⚠️ {item.label}</>
+              : <>🔴 {item.label}</>}
           </button>
         ))}
         {items.length === 0 && <div className="slash-menu-empty">No matches</div>}
@@ -105,12 +141,12 @@ const SlashCommandList = forwardRef<SlashCommandListHandle, SlashCommandListProp
 )
 
 // ---------------------------------------------------------------------------
-// Slash popup state stored in React state (no ReactRenderer needed)
+// Popup state
 // ---------------------------------------------------------------------------
 
 interface SlashPopup {
-  items: SlashItem[]
-  command: (item: SlashItem) => void
+  items: AnySlashItem[]
+  command: (item: AnySlashItem) => void
   rect: DOMRect
 }
 
@@ -121,20 +157,25 @@ interface SlashPopup {
 interface Props {
   content: string
   onSave: (md: string) => void
-  onSelectSlashItem: (item: SlashItem) => void
+  onSelectSlashItem: (item: SlashItem, insertLine: () => void) => void
+  wikiArticles?: WikiArticleRef[]
+  onWikiLinkClick?: (articleId: number, title: string) => void
 }
 
-export function SceneEditor({ content, onSave, onSelectSlashItem }: Props) {
+export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles = [], onWikiLinkClick }: Props) {
   const [isFocused, setIsFocused] = useState(false)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const onSaveRef = useRef(onSave)
   const onSelectRef = useRef(onSelectSlashItem)
+  const wikiArticlesRef = useRef(wikiArticles)
+  const onWikiClickRef = useRef<((articleId: number, title: string) => void) | null>(onWikiLinkClick ?? null)
 
   useEffect(() => { onSaveRef.current = onSave }, [onSave])
   useEffect(() => { onSelectRef.current = onSelectSlashItem }, [onSelectSlashItem])
+  useEffect(() => { wikiArticlesRef.current = wikiArticles }, [wikiArticles])
+  useEffect(() => { onWikiClickRef.current = onWikiLinkClick ?? null }, [onWikiLinkClick])
 
   const [slashPopup, setSlashPopup] = useState<SlashPopup | null>(null)
-  // Stable refs so the extension closure can always reach the latest values
   const setSlashRef = useRef(setSlashPopup)
   const slashListRef = useRef<SlashCommandListHandle>(null)
 
@@ -145,35 +186,69 @@ export function SceneEditor({ content, onSave, onSelectSlashItem }: Props) {
     }, 600)
   }, [])
 
-  // Build extensions once. All mutable state is reached through refs.
   const extensions = useMemo(() => {
     const SlashCommand = Extension.create({
       name: 'slashCommand',
       addProseMirrorPlugins() {
         return [
-          Suggestion<SlashItem>({
+          Suggestion<AnySlashItem>({
             editor: this.editor as Editor,
             char: '/',
             command({
               editor: ed,
               range,
-              props,
+              props: item,
             }: {
               editor: Editor
               range: { from: number; to: number }
-              props: SlashItem
+              props: AnySlashItem
             }) {
               ed.chain().focus().deleteRange(range).run()
-              onSelectRef.current(props)
+
+              if (item.type === 'wiki') {
+                // Insert inline wiki link node directly — no parent callback needed
+                ed.chain().insertContent({
+                  type: 'wikiLink',
+                  attrs: {
+                    articleId: item.articleId,
+                    articleTitle: item.label,
+                    articleCategory: item.category,
+                  },
+                }).run()
+                return
+              }
+
+              // skill / save: bubble up to parent
+              const title = getCheckTitle(item)
+              const insertLine = () => {
+                ed.chain().insertContent({
+                  type: 'checkLine',
+                  attrs: { checkType: item.type, title },
+                }).run()
+              }
+              onSelectRef.current(item, insertLine)
             },
-            items({ query }: { query: string }): SlashItem[] {
-              return ALL_SLASH_ITEMS.filter(
+            items({ query }: { query: string }): AnySlashItem[] {
+              const q = query.toLowerCase()
+              // Wiki items: prefix-match on "wiki" or fuzzy-match article titles
+              const isWikiQuery = 'wiki'.startsWith(q) || q.startsWith('wiki')
+              const wikiQuery = q.startsWith('wiki') ? q.slice(4).trim() : ''
+
+              const wikiItems: WikiSlashItem[] = isWikiQuery
+                ? wikiArticlesRef.current
+                    .filter((a) => !wikiQuery || fuzzyMatch(wikiQuery, a.title))
+                    .map((a) => ({ type: 'wiki', articleId: a.id, label: a.title, category: a.category }))
+                : []
+
+              const checkItems: CheckSlashItem[] = ALL_CHECK_ITEMS.filter(
                 (item) => fuzzyMatch(query, item.label) || fuzzyMatch(query, item.subtype),
               )
+
+              return [...wikiItems, ...checkItems]
             },
             render() {
               return {
-                onStart(props: SuggestionProps<SlashItem>) {
+                onStart(props: SuggestionProps<AnySlashItem>) {
                   const rect = props.clientRect?.() ?? null
                   if (!rect) return
                   setSlashRef.current({
@@ -182,7 +257,7 @@ export function SceneEditor({ content, onSave, onSelectSlashItem }: Props) {
                     rect,
                   })
                 },
-                onUpdate(props: SuggestionProps<SlashItem>) {
+                onUpdate(props: SuggestionProps<AnySlashItem>) {
                   const rect = props.clientRect?.() ?? null
                   setSlashRef.current((prev) =>
                     prev
@@ -214,9 +289,11 @@ export function SceneEditor({ content, onSave, onSelectSlashItem }: Props) {
 
     return [
       StarterKit,
+      CheckLine,
+      createWikiLinkExtension(onWikiClickRef),
       Markdown,
       Placeholder.configure({
-        placeholder: 'Click to write scene content... Type / to add a skill check or saving throw',
+        placeholder: 'Click to write scene content… Type / to add a skill check, saving throw, or wiki link',
       }),
       SlashCommand,
     ]
@@ -234,7 +311,6 @@ export function SceneEditor({ content, onSave, onSelectSlashItem }: Props) {
     onBlur() { setIsFocused(false) },
   })
 
-  // Sync content when prop changes externally
   useEffect(() => {
     if (!editor) return
     const currentMd: string = (editor.storage.markdown as { getMarkdown: () => string }).getMarkdown()

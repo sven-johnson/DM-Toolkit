@@ -1,21 +1,31 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import type { Character } from '../types'
 import { ABILITIES, SKILLS, SAVES, calcModifier, formatModifier } from '../constants/dnd'
 import {
   useCharacters,
   useCreateCharacter,
   useDeleteCharacter,
+  useImportCharacterPdf,
   useUpdateCharacter,
 } from '../hooks/useCharacters'
 
 export function CharactersPage() {
-  const { data: characters = [], isLoading } = useCharacters()
-  const createCharacter = useCreateCharacter()
-  const updateCharacter = useUpdateCharacter()
-  const deleteCharacter = useDeleteCharacter()
+  const { campaignId: campaignIdStr } = useParams<{ campaignId: string }>()
+  const campaignId = Number(campaignIdStr)
+  const { data: characters = [], isLoading } = useCharacters(campaignId)
+  const createCharacter = useCreateCharacter(campaignId)
+  const updateCharacter = useUpdateCharacter(campaignId)
+  const deleteCharacter = useDeleteCharacter(campaignId)
+  const importPdf = useImportCharacterPdf(campaignId)
 
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null)
+  const [showImport, setShowImport] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importCharacterId, setImportCharacterId] = useState<number | undefined>(undefined)
+  const [importResult, setImportResult] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   function toggleExpand(id: number) {
     setExpandedIds((prev) => {
@@ -32,6 +42,27 @@ export function CharactersPage() {
         setExpandedIds((prev) => new Set([...prev, char.id]))
       },
     })
+  }
+
+  function handleImport(e: React.FormEvent) {
+    e.preventDefault()
+    if (!importFile) return
+    setImportResult(null)
+    importPdf.mutate(
+      { file: importFile, characterId: importCharacterId },
+      {
+        onSuccess: (char) => {
+          setImportResult({ type: 'success', msg: `Imported "${char.name || 'character'}" successfully.` })
+          setImportFile(null)
+          setImportCharacterId(undefined)
+          if (fileInputRef.current) fileInputRef.current.value = ''
+          setExpandedIds((prev) => new Set([...prev, char.id]))
+        },
+        onError: () => {
+          setImportResult({ type: 'error', msg: 'Import failed. Make sure the PDF is a D&D Beyond character sheet export.' })
+        },
+      },
+    )
   }
 
   function handleUpdate(id: number, patch: Partial<Character>) {
@@ -57,12 +88,75 @@ export function CharactersPage() {
     <div className="page">
       <div className="page-header">
         <h1>Characters</h1>
-        <button className="btn-primary" onClick={handleCreate} disabled={createCharacter.isPending}>
-          + Add Character
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            className="btn-ghost"
+            onClick={() => { setShowImport((s) => !s); setImportResult(null) }}
+            type="button"
+          >
+            Import PDF
+          </button>
+          <button className="btn-primary" onClick={handleCreate} disabled={createCharacter.isPending}>
+            + Add Character
+          </button>
+        </div>
       </div>
 
-      {characters.length === 0 && (
+      {showImport && (
+        <form className="import-pdf-form" onSubmit={handleImport}>
+          <div className="import-pdf-row">
+            <label className="import-pdf-label">D&amp;D Beyond PDF</label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,application/pdf"
+              className="import-pdf-file-input"
+              onChange={(e) => {
+                setImportFile(e.target.files?.[0] ?? null)
+                setImportResult(null)
+              }}
+            />
+          </div>
+          <div className="import-pdf-row">
+            <label className="import-pdf-label">Overwrite character (optional)</label>
+            <select
+              className="input import-pdf-select"
+              value={importCharacterId ?? ''}
+              onChange={(e) => setImportCharacterId(e.target.value ? Number(e.target.value) : undefined)}
+            >
+              <option value="">— Create new —</option>
+              {characters.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name || `Character #${c.id}`}
+                </option>
+              ))}
+            </select>
+          </div>
+          {importResult && (
+            <p className={`import-pdf-status${importResult.type === 'error' ? ' import-pdf-status-error' : ''}`}>
+              {importResult.msg}
+            </p>
+          )}
+          <div className="import-pdf-actions">
+            <button
+              className="btn-primary"
+              type="submit"
+              disabled={!importFile || importPdf.isPending}
+            >
+              {importPdf.isPending ? 'Importing…' : 'Import'}
+            </button>
+            <button
+              className="btn-ghost"
+              type="button"
+              onClick={() => { setShowImport(false); setImportResult(null) }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      {characters.length === 0 && !showImport && (
         <p className="empty-state">No characters yet. Add one to get started.</p>
       )}
 
@@ -111,7 +205,15 @@ function CharacterManagerCard({
 }: CardProps) {
   return (
     <div className="character-manager-card">
-      <div className="character-manager-card-header">
+      {/* Entire header row is clickable to expand/collapse */}
+      <div
+        className="character-manager-card-header"
+        onClick={onToggleExpand}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onToggleExpand() }}
+        aria-expanded={expanded}
+      >
         <InlineEdit
           value={character.name}
           placeholder="Name"
@@ -139,10 +241,8 @@ function CharacterManagerCard({
           label="Lv"
         />
 
-        <div className="char-card-actions">
-          <button className="btn-icon" onClick={onToggleExpand} type="button">
-            {expanded ? '▲' : '▼'}
-          </button>
+        <div className="char-card-actions" onClick={(e) => e.stopPropagation()}>
+          <span className="char-expand-indicator">{expanded ? '▲' : '▼'}</span>
           {deleteConfirm ? (
             <>
               <span className="char-delete-confirm">Delete?</span>
@@ -163,142 +263,95 @@ function CharacterManagerCard({
 
       {expanded && (
         <div className="character-manager-card-body">
-          {/* Ability Scores */}
-          <div className="char-section">
-            <div className="char-section-title">Ability Scores</div>
-            <div className="ability-grid">
-              {ABILITIES.map((a) => {
-                const score = (character as Record<string, number>)[a.scoreField]
-                const mod = (character as Record<string, number>)[a.modField]
-                return (
-                  <div key={a.key} className="ability-cell">
-                    <div className="ability-label">{a.key.toUpperCase()}</div>
-                    <div className="ability-fields">
-                      <div className="ability-field-group">
-                        <label>Score</label>
-                        <input
-                          className="input small-input"
-                          type="number"
-                          min={1}
-                          max={30}
-                          defaultValue={score}
-                          onBlur={(e) => {
-                            const val = parseInt(e.target.value, 10)
-                            if (!isNaN(val)) {
-                              const newMod = calcModifier(val)
-                              onUpdate({
-                                [a.scoreField]: val,
-                                [a.modField]: newMod,
-                              } as Partial<Character>)
-                            }
-                          }}
-                        />
-                      </div>
-                      <div className="ability-field-group">
-                        <label>Mod</label>
-                        <input
-                          className="input small-input"
-                          type="number"
-                          defaultValue={mod}
-                          onBlur={(e) => {
-                            const val = parseInt(e.target.value, 10)
-                            if (!isNaN(val)) {
-                              onUpdate({ [a.modField]: val } as Partial<Character>)
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
+          <div className="char-body-cols">
+            {/* Column 1: Combat → Abilities → Saving Throws */}
+            <div className="char-body-col">
+              <div className="char-section">
+                <div className="char-section-title">Combat</div>
+                <div className="char-stat-list">
+                  <div className="char-stat-row">
+                    <span className="char-stat-label">AC</span>
+                    <InlineNumberEdit
+                      value={character.ac}
+                      onCommit={(v) => onUpdate({ ac: v })}
+                    />
                   </div>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Skill Modifiers */}
-          <div className="char-section">
-            <div className="char-section-title">Skill Modifiers</div>
-            <div className="skill-grid">
-              {SKILLS.map((s) => (
-                <div key={s.key} className="skill-cell">
-                  <label>{s.name}</label>
-                  <input
-                    className="input small-input"
-                    type="number"
-                    defaultValue={(character as Record<string, number>)[s.key]}
-                    onBlur={(e) => {
-                      const val = parseInt(e.target.value, 10)
-                      if (!isNaN(val)) {
-                        onUpdate({ [s.key]: val } as Partial<Character>)
-                      }
-                    }}
-                  />
+                  <div className="char-stat-row">
+                    <span className="char-stat-label">Max HP</span>
+                    <InlineNumberEdit
+                      value={character.max_hp}
+                      onCommit={(v) => onUpdate({ max_hp: v })}
+                    />
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Saving Throws */}
-          <div className="char-section">
-            <div className="char-section-title">Saving Throws</div>
-            <div className="save-grid">
-              {SAVES.map((s) => (
-                <div key={s.key} className="skill-cell">
-                  <label>{s.name}</label>
-                  <input
-                    className="input small-input"
-                    type="number"
-                    defaultValue={(character as Record<string, number>)[s.key]}
-                    onBlur={(e) => {
-                      const val = parseInt(e.target.value, 10)
-                      if (!isNaN(val)) {
-                        onUpdate({ [s.key]: val } as Partial<Character>)
-                      }
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Combat */}
-          <div className="char-section">
-            <div className="char-section-title">Combat</div>
-            <div className="combat-grid">
-              <div className="skill-cell">
-                <label>AC</label>
-                <input
-                  className="input small-input"
-                  type="number"
-                  defaultValue={character.ac}
-                  onBlur={(e) => {
-                    const val = parseInt(e.target.value, 10)
-                    if (!isNaN(val)) onUpdate({ ac: val })
-                  }}
-                />
               </div>
-              <div className="skill-cell">
-                <label>Max HP</label>
-                <input
-                  className="input small-input"
-                  type="number"
-                  defaultValue={character.max_hp}
-                  onBlur={(e) => {
-                    const val = parseInt(e.target.value, 10)
-                    if (!isNaN(val)) onUpdate({ max_hp: val })
-                  }}
-                />
+
+              <div className="char-section">
+                <div className="char-section-title">Ability Scores</div>
+                <div className="char-stat-list">
+                  {ABILITIES.map((a) => {
+                    const score = (character as Record<string, number>)[a.scoreField]
+                    const mod = (character as Record<string, number>)[a.modField]
+                    return (
+                      <div key={a.key} className="char-stat-row">
+                        <span className="char-stat-label">{a.key.toUpperCase()}</span>
+                        <span className="char-stat-pair">
+                          <InlineNumberEdit
+                            value={score}
+                            min={1}
+                            max={30}
+                            onCommit={(v) => onUpdate({
+                              [a.scoreField]: v,
+                              [a.modField]: calcModifier(v),
+                            } as Partial<Character>)}
+                          />
+                          <span className="char-stat-separator">/</span>
+                          <InlineNumberEdit
+                            value={mod}
+                            onCommit={(v) => onUpdate({ [a.modField]: v } as Partial<Character>)}
+                          />
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="char-section">
+                <div className="char-section-title">Saving Throws</div>
+                <div className="char-stat-list">
+                  {SAVES.map((s) => (
+                    <div key={s.key} className="char-stat-row">
+                      <span className="char-stat-label">{s.name}</span>
+                      <InlineNumberEdit
+                        value={(character as Record<string, number>)[s.key]}
+                        onCommit={(v) => onUpdate({ [s.key]: v } as Partial<Character>)}
+                        formatDisplay={formatModifier}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="char-ability-summary">
-            {ABILITIES.map((a) => (
-              <span key={a.key} className="ability-summary-item">
-                {a.key.toUpperCase()}{' '}
-                {formatModifier((character as Record<string, number>)[a.modField])}
-              </span>
-            ))}
+            {/* Column 2: Skills */}
+            <div className="char-body-col">
+              <div className="char-section">
+                <div className="char-section-title">Skills</div>
+                <div className="char-stat-list">
+                  {SKILLS.map((s) => (
+                    <div key={s.key} className="char-stat-row">
+                      <span className="char-stat-label">{s.name}</span>
+                      <InlineNumberEdit
+                        value={(character as Record<string, number>)[s.key]}
+                        onCommit={(v) => onUpdate({ [s.key]: v } as Partial<Character>)}
+                        formatDisplay={formatModifier}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -330,15 +383,10 @@ function InlineEdit({ value, placeholder, onCommit, className }: InlineEditProps
           onCommit(draft)
         }}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            setEditing(false)
-            onCommit(draft)
-          }
-          if (e.key === 'Escape') {
-            setDraft(value)
-            setEditing(false)
-          }
+          if (e.key === 'Enter') { setEditing(false); onCommit(draft) }
+          if (e.key === 'Escape') { setDraft(value); setEditing(false) }
         }}
+        onClick={(e) => e.stopPropagation()}
       />
     )
   }
@@ -346,10 +394,7 @@ function InlineEdit({ value, placeholder, onCommit, className }: InlineEditProps
   return (
     <span
       className={`inline-edit-display ${className ?? ''}`}
-      onClick={() => {
-        setDraft(value)
-        setEditing(true)
-      }}
+      onClick={(e) => { e.stopPropagation(); setDraft(value); setEditing(true) }}
       title={`Click to edit ${placeholder.toLowerCase()}`}
     >
       {value || <span className="placeholder">{placeholder}</span>}
@@ -364,9 +409,10 @@ interface InlineNumberEditProps {
   onCommit: (val: number) => void
   className?: string
   label?: string
+  formatDisplay?: (v: number) => string
 }
 
-function InlineNumberEdit({ value, min, max, onCommit, className, label }: InlineNumberEditProps) {
+function InlineNumberEdit({ value, min, max, onCommit, className, label, formatDisplay }: InlineNumberEditProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(String(value))
 
@@ -392,24 +438,22 @@ function InlineNumberEdit({ value, min, max, onCommit, className, label }: Inlin
             const val = parseInt(draft, 10)
             if (!isNaN(val)) onCommit(val)
           }
-          if (e.key === 'Escape') {
-            setDraft(String(value))
-            setEditing(false)
-          }
+          if (e.key === 'Escape') { setDraft(String(value)); setEditing(false) }
         }}
+        onClick={(e) => e.stopPropagation()}
       />
     )
   }
 
+  const display = formatDisplay ? formatDisplay(value) : label ? `${label} ${value}` : String(value)
+
   return (
     <span
-      className={`inline-edit-display ${className ?? ''}`}
-      onClick={() => {
-        setDraft(String(value))
-        setEditing(true)
-      }}
+      className={`inline-edit-display inline-edit-number-display ${className ?? ''}`}
+      onClick={(e) => { e.stopPropagation(); setDraft(String(value)); setEditing(true) }}
+      title="Click to edit"
     >
-      {label ? `${label} ${value}` : value}
+      {display}
     </span>
   )
 }

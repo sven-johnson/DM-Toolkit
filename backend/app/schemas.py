@@ -102,6 +102,7 @@ class CharacterUpdate(BaseModel):
 
 class CharacterOut(BaseModel):
     id: int
+    campaign_id: int
     name: str
     char_class: str
     subclass: str
@@ -189,8 +190,8 @@ class RollHistoryItem(BaseModel):
     character_ids: list[int]
     scene_id: int
     scene_title: str
-    session_id: int
-    session_title: str
+    session_id: Optional[int] = None
+    session_title: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -233,6 +234,57 @@ class CheckWithRolls(CheckOut):
 
 
 # ---------------------------------------------------------------------------
+# Scene enemies & shop items
+# ---------------------------------------------------------------------------
+
+
+class SceneEnemyCreate(BaseModel):
+    name: str = ""
+    quantity: int = 1
+
+
+class SceneEnemyUpdate(BaseModel):
+    name: Optional[str] = None
+    quantity: Optional[int] = None
+
+
+class SceneEnemyOut(BaseModel):
+    id: int
+    scene_id: int
+    name: str
+    quantity: int
+    order_index: int
+
+    model_config = {"from_attributes": True}
+
+
+class SceneShopItemCreate(BaseModel):
+    name: str = ""
+    description: str = ""
+    price: int = 0
+    currency: str = "gold"
+
+
+class SceneShopItemUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    price: Optional[int] = None
+    currency: Optional[str] = None
+
+
+class SceneShopItemOut(BaseModel):
+    id: int
+    scene_id: int
+    name: str
+    description: Optional[str]
+    price: int
+    currency: str
+    order_index: int
+
+    model_config = {"from_attributes": True}
+
+
+# ---------------------------------------------------------------------------
 # Scene
 # ---------------------------------------------------------------------------
 
@@ -240,24 +292,68 @@ class CheckWithRolls(CheckOut):
 class SceneCreate(BaseModel):
     title: str
     body: str = ""
+    dm_notes: str = ""
+    scene_type: str = "story"
 
 
 class SceneUpdate(BaseModel):
     title: Optional[str] = None
     body: Optional[str] = None
+    dm_notes: Optional[str] = None
+    scene_type: Optional[str] = None
+    puzzle_clues: Optional[str] = None
+    puzzle_solution: Optional[str] = None
 
 
 class SceneOut(BaseModel):
     id: int
-    session_id: int
+    uuid: str
+    storyline_id: int
     title: str
     body: str
+    dm_notes: Optional[str]
+    scene_type: str
+    puzzle_clues: Optional[str]
+    puzzle_solution: Optional[str]
     order_index: int
     created_at: datetime
     updated_at: datetime
     checks: list[CheckWithRolls] = []
+    enemies: list[SceneEnemyOut] = []
+    shop_items: list[SceneShopItemOut] = []
 
     model_config = {"from_attributes": True}
+
+
+# ---------------------------------------------------------------------------
+# Storyline
+# ---------------------------------------------------------------------------
+
+
+class StorylineCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+
+
+class StorylineUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+
+
+class StorylineOut(BaseModel):
+    id: int
+    uuid: str
+    campaign_id: int
+    title: str
+    description: Optional[str]
+    order_index: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class StorylineWithScenes(StorylineOut):
+    scenes: list[SceneOut] = []
 
 
 # ---------------------------------------------------------------------------
@@ -268,17 +364,24 @@ class SceneOut(BaseModel):
 class SessionCreate(BaseModel):
     title: str
     date: Optional[DateType] = None
+    storyline_id: Optional[int] = None
 
 
 class SessionUpdate(BaseModel):
     title: Optional[str] = None
     date: Optional[DateType] = None
+    recap_notes: Optional[str] = None
+    active_storyline_id: Optional[int] = None
 
 
 class SessionOut(BaseModel):
     id: int
+    uuid: str
+    campaign_id: int
     title: str
     date: Optional[DateType]
+    recap_notes: Optional[str]
+    active_storyline_id: Optional[int]
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -286,6 +389,32 @@ class SessionOut(BaseModel):
 
 class SessionWithScenes(SessionOut):
     scenes: list[SceneOut] = []
+
+
+# ---------------------------------------------------------------------------
+# Campaign
+# ---------------------------------------------------------------------------
+
+
+class CampaignCreate(BaseModel):
+    name: str
+
+
+class CampaignUpdate(BaseModel):
+    name: Optional[str] = None
+
+
+class CampaignOut(BaseModel):
+    id: int
+    uuid: str
+    name: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class CampaignWithRelations(CampaignOut):
+    storylines: list[StorylineOut] = []
 
 
 # ---------------------------------------------------------------------------
@@ -314,3 +443,121 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+# ---------------------------------------------------------------------------
+# Wiki
+# ---------------------------------------------------------------------------
+
+
+class WikiArticleCreate(BaseModel):
+    campaign_id: int
+    title: str
+    category: str = "other"
+    is_stub: bool = False
+    image_url: Optional[str] = None
+    tags: Optional[list[str]] = None
+    public_content: str = ""
+    private_content: str = ""
+
+
+class WikiArticleUpdate(BaseModel):
+    title: str
+    category: str
+    is_stub: bool
+    image_url: Optional[str]
+    tags: Optional[list[str]]
+    public_content: str
+    private_content: str
+
+
+class WikiArticleOut(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: int
+    campaign_id: int
+    title: str
+    category: str
+    is_stub: bool
+    image_url: Optional[str]
+    tags: Optional[list[str]]
+    public_content: str
+    private_content: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class WikiAssociationDisplay(BaseModel):
+    id: int
+    association_label: str
+    other_article_id: int
+    other_article_title: str
+    other_article_category: str
+    direction: str  # 'from' (this article is source) | 'to' (this article is target)
+
+
+class WikiArticleDetail(WikiArticleOut):
+    associations: list[WikiAssociationDisplay] = []
+
+
+class WikiAddAssociationRequest(BaseModel):
+    target_title: str
+    target_category: str = "other"
+    association_label: str
+
+
+class WikiAddAssociationResult(BaseModel):
+    association_id: int
+    stub_created: bool
+    stub_article_id: Optional[int] = None
+
+
+class WikiImportAssociation(BaseModel):
+    target_title: str
+    target_category: str = "other"
+    association_label: str
+
+
+class WikiImportArticle(BaseModel):
+    title: str
+    category: str = "other"
+    is_stub: bool = False
+    image_url: Optional[str] = None
+    tags: Optional[list[str]] = None
+    public_content: str = ""
+    private_content: str = ""
+    associations: list[WikiImportAssociation] = []
+
+
+class WikiImportRequest(BaseModel):
+    campaign_id: int
+    articles: list[WikiImportArticle]
+
+
+class WikiImportResult(BaseModel):
+    created: int
+    updated: int
+    stubs_created: int
+    errors: list[str]
+
+
+class WikiExportAssociation(BaseModel):
+    target_title: str
+    target_category: str
+    association_label: str
+
+
+class WikiExportArticle(BaseModel):
+    title: str
+    category: str
+    is_stub: bool
+    image_url: Optional[str]
+    tags: Optional[list[str]]
+    public_content: str
+    private_content: str
+    associations: list[WikiExportAssociation]
+
+
+class WikiExportResponse(BaseModel):
+    campaign_id: int
+    articles: list[WikiExportArticle]

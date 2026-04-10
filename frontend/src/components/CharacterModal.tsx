@@ -41,51 +41,55 @@ export function CharacterModal({ character, onClose }: Props) {
         </div>
 
         <div className="character-modal-cols">
-          {/* Column 1: Combat + Ability Scores */}
-          <div>
-            <div className="modal-section-title">Combat</div>
-            <div className="modal-stat-row">
-              <span>AC</span>
-              <strong>{character.ac}</strong>
-            </div>
-            <div className="modal-stat-row">
-              <span>Max HP</span>
-              <strong>{character.max_hp}</strong>
-            </div>
-            <div className="modal-section-title" style={{ marginTop: '0.75rem' }}>
-              Abilities
-            </div>
-            {ABILITIES.map((a) => (
-              <div key={a.key} className="modal-stat-row">
-                <span>{a.key.toUpperCase()}</span>
-                <strong>
-                  {(character as Record<string, number>)[a.scoreField]}{' '}
-                  ({formatModifier((character as Record<string, number>)[a.modField])})
-                </strong>
+          {/* Column 1: Combat + Abilities + Saving Throws */}
+          <div className="modal-col-left">
+            <div className="modal-stat-block">
+              <div className="modal-section-title">Combat</div>
+              <div className="modal-stat-row">
+                <span>AC</span>
+                <strong>{character.ac}</strong>
               </div>
-            ))}
+              <div className="modal-stat-row">
+                <span>Max HP</span>
+                <strong>{character.max_hp}</strong>
+              </div>
+            </div>
+
+            <div className="modal-stat-block">
+              <div className="modal-section-title">Abilities</div>
+              {ABILITIES.map((a) => (
+                <div key={a.key} className="modal-stat-row">
+                  <span>{a.key.toUpperCase()}</span>
+                  <strong>
+                    {(character as Record<string, number>)[a.scoreField]}{' '}
+                    ({formatModifier((character as Record<string, number>)[a.modField])})
+                  </strong>
+                </div>
+              ))}
+            </div>
+
+            <div className="modal-stat-block">
+              <div className="modal-section-title">Saving Throws</div>
+              {SAVES.map((s) => (
+                <div key={s.key} className="modal-stat-row">
+                  <span>{s.name}</span>
+                  <strong>{formatModifier((character as Record<string, number>)[s.key])}</strong>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Column 2: Skills */}
-          <div>
-            <div className="modal-section-title">Skills</div>
-            {SKILLS.map((s) => (
-              <div key={s.key} className="modal-stat-row">
-                <span>{s.name}</span>
-                <strong>{formatModifier((character as Record<string, number>)[s.key])}</strong>
-              </div>
-            ))}
-          </div>
-
-          {/* Column 3: Saving Throws */}
-          <div>
-            <div className="modal-section-title">Saving Throws</div>
-            {SAVES.map((s) => (
-              <div key={s.key} className="modal-stat-row">
-                <span>{s.name}</span>
-                <strong>{formatModifier((character as Record<string, number>)[s.key])}</strong>
-              </div>
-            ))}
+          <div className="modal-col-right">
+            <div className="modal-stat-block">
+              <div className="modal-section-title">Skills</div>
+              {SKILLS.map((s) => (
+                <div key={s.key} className="modal-stat-row">
+                  <span>{s.name}</span>
+                  <strong>{formatModifier((character as Record<string, number>)[s.key])}</strong>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

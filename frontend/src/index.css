@@ -7,7 +7,7 @@
   --bg-input:    #0e1015;
   --border:      #2a2d38;
   --border-focus:#5b6aff;
-  --text:        #c9ccd6;
+  --text:        #e2e2e2;
   --text-muted:  #6b7280;
   --text-heading:#e8eaf0;
   --accent:      #5b6aff;
@@ -15,6 +15,8 @@
   --danger:      #e05252;
   --danger-hover:#cc3c3c;
   --success:     #4caf80;
+  --skill-check-yellow: #de9c00;
+  --skill-save-red:     #c40000;
 
   --radius:      6px;
   --radius-lg:   10px;
@@ -102,6 +104,21 @@ a:hover { text-decoration: underline; }
 .nav-link.active {
   color: var(--accent);
   background: rgba(91, 106, 255, 0.12);
+}
+
+.nav-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.nav-logout {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 0.875rem;
 }
 
 /* ============================================================
@@ -276,30 +293,55 @@ a:hover { text-decoration: underline; }
 
 .character-modal-cols {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.modal-col-left,
+.modal-col-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.modal-stat-block {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.65rem;
 }
 
 .modal-section-title {
-  font-size: 0.75rem;
+  font-size: 1rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  margin-bottom: 0.5rem;
-  margin-top: 0.25rem;
+  letter-spacing: 0.04em;
+  color: #80aaff;
+  margin-bottom: 0.4rem;
+  font-weight: 600;
 }
 
 .modal-stat-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.2rem 0;
-  font-size: 0.85rem;
+  padding: 0.18rem 0;
+  font-size: 0.82rem;
   border-bottom: 1px solid rgba(255,255,255,0.04);
+  gap: 0.5rem;
+}
+
+.modal-stat-row:last-child {
+  border-bottom: none;
+}
+
+.modal-stat-row span {
+  color: var(--text);
+  white-space: nowrap;
 }
 
 .modal-stat-row strong {
   color: var(--text-heading);
+  white-space: nowrap;
 }
 
 /* ============================================================
@@ -502,7 +544,11 @@ textarea.scene-body-textarea {
   gap: 0.5rem;
   padding: 0.625rem 0.75rem;
   border-bottom: 1px solid transparent;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.1s;
 }
+.scene-header:hover { background: rgba(255, 255, 255, 0.03); }
 .scene-card:has(.scene-body) .scene-header { border-bottom-color: var(--border); }
 
 .drag-handle {
@@ -518,24 +564,72 @@ textarea.scene-body-textarea {
 
 .scene-title {
   flex: 1;
+  min-width: 0;
   font-weight: 500;
   color: var(--text-heading);
   cursor: pointer;
   padding: 0.1rem 0.25rem;
   border-radius: 3px;
   transition: background 0.1s;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .scene-title:hover { background: var(--border); }
 
 input.scene-title-input {
   flex: 1;
+  min-width: 0;
   padding: 0.2rem 0.4rem;
   font-size: 0.9375rem;
   font-weight: 500;
 }
 
+.scene-header-divider {
+  width: 1px;
+  height: 1.25rem;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.scene-music-cue {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.scene-music-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.scene-music-play {
+  color: #2dcb3a;
+}
+.scene-music-play:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.scene-music-input {
+  width: 8rem;
+  padding: 0.15rem 0.35rem;
+  font-size: 0.8rem;
+  height: auto;
+}
+
+.scene-expand-indicator {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
 .scene-actions {
   display: flex;
+  align-items: center;
   gap: 0.2rem;
   flex-shrink: 0;
 }
@@ -562,8 +656,11 @@ input.scene-title-input {
 .scene-checks {
   margin-top: 0.75rem;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: nowrap;
   gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
 }
 
 /* ============================================================
@@ -702,15 +799,91 @@ input.scene-title-input {
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 0.625rem 0.75rem;
+  overflow: hidden;
   font-size: 0.875rem;
+  width: 250px;
+  flex-shrink: 0;
+}
+
+.check-summary-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.3rem 0.5rem 0.3rem 0.75rem;
+  font-size: 0.78rem;
+  color: #fff;
+  gap: 0.25rem;
+}
+
+.check-summary-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.check-summary-actions {
+  display: flex;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.check-summary-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  border-radius: 3px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.35rem;
+  line-height: 1;
+  transition: background 0.15s;
+}
+
+.check-summary-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.check-summary-btn-danger:hover {
+  background: rgba(200, 0, 0, 0.5);
+}
+
+.check-summary-skill {
+  background: var(--skill-check-yellow);
+}
+
+.check-summary-save {
+  background: var(--skill-save-red);
+}
+
+/* ============================================================
+   Check line blocks in ProseMirror editor
+   ============================================================ */
+.check-line-block {
+  display: block;
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius);
+  margin: 0.2rem 0;
+  font-size: 0.85rem;
+  color: #fff;
+  user-select: none;
+  cursor: default;
+}
+
+.check-line-skill {
+  background: var(--skill-check-yellow);
+}
+
+.check-line-save {
+  background: var(--skill-save-red);
 }
 
 .check-header {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  padding: 0.5rem 0.75rem 0.25rem;
+  margin-bottom: 0.25rem;
 }
 
 .check-icon {
@@ -721,12 +894,13 @@ input.scene-title-input {
 .check-label {
   font-weight: 600;
   color: var(--text-heading);
+  font-size: 1rem;
   flex: 1;
 }
 
 .check-dc-label {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: 1rem;
 }
 
 .check-character-filter {
@@ -760,21 +934,23 @@ input.scene-title-input {
 }
 
 .check-character-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+  padding: 0 0.5rem 0.5rem;
 }
 
 .check-character-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.2rem 0;
+  gap: 0.25rem;
+  padding: 0.15rem 0;
+  min-width: 0;
 }
 
 .check-char-name {
   flex: 1;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--text);
   min-width: 0;
   overflow: hidden;
@@ -782,26 +958,15 @@ input.scene-title-input {
   white-space: nowrap;
 }
 
-.check-char-mod {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  width: 36px;
-  text-align: right;
-  flex-shrink: 0;
-}
-
-.check-char-pct {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  width: 40px;
-  text-align: right;
-  flex-shrink: 0;
-}
-
 .check-no-chars {
   color: var(--text-muted);
   font-style: italic;
   font-size: 0.85rem;
+  grid-column: 1 / -1;
+}
+
+.check-character-rows .roll-input {
+  width: 40px;
 }
 
 /* ============================================================
@@ -922,6 +1087,22 @@ input.scene-title-input {
   cursor: pointer;
 }
 
+.pending-check-char-name {
+  flex: 1;
+}
+
+.pending-check-char-option-readonly {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.pending-check-char-stats {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  margin-left: auto;
+}
+
 .pending-check-actions {
   display: flex;
   gap: 0.5rem;
@@ -949,6 +1130,18 @@ input.scene-title-input {
   gap: 0.5rem;
   padding: 0.625rem 0.75rem;
   flex-wrap: wrap;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.1s;
+}
+
+.character-manager-card-header:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.char-expand-indicator {
+  font-size: 0.7rem;
+  color: var(--text-muted);
 }
 
 .character-manager-card-body {
@@ -1003,79 +1196,86 @@ input.scene-title-input {
 .char-inline-subclass { min-width: 80px; color: var(--text-muted); }
 .char-inline-level { font-size: 0.8rem; }
 
+.char-body-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.char-body-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
 .char-section {
-  margin-bottom: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.6rem;
 }
 
 .char-section-title {
-  font-size: 0.75rem;
+  font-size: 1rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  margin-bottom: 0.5rem;
+  letter-spacing: 0.04em;
+  color: #80aaff;
+  margin-bottom: 0.4rem;
   font-weight: 600;
 }
 
-/* ============================================================
-   Ability, skill, save grids
-   ============================================================ */
-.ability-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.75rem;
-}
-
-.ability-cell {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0.5rem;
-}
-
-.ability-label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--accent);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.35rem;
-}
-
-.ability-fields {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.ability-field-group {
+/* ── Stat list (rows of label + inline-edit value) ── */
+.char-stat-list {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+}
+
+.char-stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.15rem 0;
+  font-size: 0.82rem;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  gap: 0.35rem;
+}
+
+.char-stat-row:last-child {
+  border-bottom: none;
+}
+
+.char-stat-label {
+  color: var(--text);
+  white-space: nowrap;
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.ability-field-group label {
-  font-size: 0.7rem;
+.char-stat-pair {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.char-stat-separator {
   color: var(--text-muted);
+  font-size: 0.75rem;
 }
 
-.skill-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.5rem;
+/* Inline number display in stat rows */
+.inline-edit-number-display {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-heading);
+  min-width: 2rem;
+  text-align: right;
+  padding: 0.15rem 0.3rem;
 }
 
-.save-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.5rem;
-}
-
-.combat-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.5rem;
-}
-
+/* ── Legacy grids (kept for any other uses) ── */
 .skill-cell {
   display: flex;
   align-items: center;
@@ -1088,8 +1288,6 @@ input.scene-title-input {
   color: var(--text-muted);
   font-size: 0.8rem;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .skill-cell .input.small-input {
@@ -1207,3 +1405,796 @@ input.scene-title-input {
 .status-text     { color: var(--text-muted); padding: 2rem 0; text-align: center; }
 .status-text.error { color: var(--danger); }
 .empty-state     { color: var(--text-muted); font-style: italic; padding: 1.5rem 0; }
+.text-muted      { color: var(--text-muted); }
+
+.btn-sm {
+  padding: 0.25rem 0.625rem;
+  font-size: 0.8rem;
+}
+
+/* ============================================================
+   Campaigns page
+   ============================================================ */
+.campaign-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.campaign-card {
+  display: flex;
+  align-items: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  gap: 0.75rem;
+  transition: border-color 0.15s;
+}
+.campaign-card:hover { border-color: var(--accent); }
+
+.campaign-link {
+  flex: 1;
+  color: inherit;
+  text-decoration: none;
+}
+
+.campaign-select-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  padding: 0.1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.campaign-select-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.campaign-card:hover .campaign-select-hint { opacity: 1; }
+
+.campaign-name {
+  font-weight: 500;
+  color: var(--text-heading);
+}
+
+.campaign-name-input {
+  flex: 1;
+}
+
+.campaign-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   Session detail — storyline bar & recap
+   ============================================================ */
+.session-storyline-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.session-storyline-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text);
+}
+
+.storyline-indicator {
+  font-size: 0.9rem;
+}
+
+.storyline-selector-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.session-recap {
+  margin-bottom: 1rem;
+}
+
+.session-recap-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+  cursor: pointer;
+  display: inline-block;
+}
+.session-recap-label:hover { color: var(--text); }
+
+.session-recap-text {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text);
+  cursor: pointer;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  min-height: 2rem;
+  transition: background 0.1s, border-color 0.1s;
+  white-space: pre-wrap;
+}
+.session-recap-text:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--border);
+}
+
+.session-recap-input {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border-focus);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  padding: 0.35rem 0.5rem;
+  resize: vertical;
+  outline: none;
+}
+
+.add-next-scene-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+/* ============================================================
+   Scene card — type selector & type-specific sections
+   ============================================================ */
+.scene-type-select {
+  font-size: 0.8rem;
+  padding: 0.2rem 0.4rem;
+  width: auto;
+  flex-shrink: 0;
+}
+
+.scene-type-section {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.scene-type-section-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.scene-type-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.625rem;
+}
+
+.scene-type-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.scene-type-textarea {
+  width: 100%;
+  resize: vertical;
+  font-family: var(--sans);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* ============================================================
+   Scene table (enemies / shop items)
+   ============================================================ */
+.scene-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.scene-table th {
+  text-align: left;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  font-weight: 500;
+  padding: 0.25rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.scene-table td {
+  padding: 0.2rem 0.4rem;
+  vertical-align: middle;
+}
+
+.scene-table .input.small-input {
+  width: 100%;
+  min-width: 60px;
+}
+
+.scene-add-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-top: 0.4rem;
+}
+
+/* ============================================================
+   DM Notes editor
+   ============================================================ */
+.dm-notes {
+  margin-top: 0.5rem;
+}
+
+.dm-notes-toggle {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-family: var(--sans);
+  padding: 0.2rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: color 0.15s;
+}
+.dm-notes-toggle:hover { color: var(--text); }
+
+.dm-notes-input {
+  width: 100%;
+  margin-top: 0.35rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  padding: 0.4rem 0.5rem;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.dm-notes-input:focus { border-color: var(--border-focus); }
+
+/* ── PDF Import ─────────────────────────────────────────── */
+.import-pdf-form {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.import-pdf-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.import-pdf-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  min-width: 10rem;
+}
+
+.import-pdf-file-input {
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.import-pdf-select {
+  min-width: 12rem;
+}
+
+.import-pdf-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.import-pdf-status {
+  font-size: 0.85rem;
+  color: var(--success);
+  margin: 0;
+}
+
+.import-pdf-status-error {
+  color: var(--danger);
+}
+
+/* ===================================================================
+   Wiki
+   =================================================================== */
+
+.wiki-category-badge {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border: 1px solid currentColor;
+  line-height: 1.4;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.wiki-stub-badge {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: rgba(245, 200, 66, 0.12);
+  color: #f5c842;
+  border: 1px solid rgba(245, 200, 66, 0.5);
+  flex-shrink: 0;
+}
+
+/* --- Filter bar --- */
+
+.wiki-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.wiki-filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.wiki-filter-pill {
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.1s, color 0.1s, background 0.1s;
+}
+.wiki-filter-pill:hover {
+  border-color: var(--text-muted);
+  color: var(--text);
+}
+.wiki-filter-pill.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(130, 170, 255, 0.1);
+}
+
+.wiki-filter-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* --- Category sections --- */
+
+.wiki-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.wiki-category-section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.wiki-category-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  user-select: none;
+  border-left: 3px solid;
+  background: var(--surface);
+  transition: background 0.1s;
+}
+.wiki-category-header:hover { background: var(--surface-raised); }
+
+.wiki-category-header-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  flex: 1;
+}
+
+.wiki-category-header-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 0.45rem;
+  line-height: 1.6;
+}
+
+.wiki-category-header-chevron {
+  font-size: 0.65rem;
+  flex-shrink: 0;
+}
+
+.wiki-category-section .wiki-grid {
+  padding: 0.625rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+/* --- Article grid --- */
+
+.wiki-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+
+.wiki-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.15s;
+}
+.wiki-card:hover { border-color: var(--accent); }
+
+.wiki-card-image {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  display: block;
+  background: var(--surface-raised);
+}
+
+.wiki-card-body {
+  padding: 0.625rem 0.75rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.wiki-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.wiki-card-title {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--text-heading);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wiki-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.wiki-card-tag {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  background: var(--surface-raised);
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+}
+
+/* --- Article detail --- */
+
+.wiki-article { max-width: 860px; }
+
+.wiki-article-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.wiki-article-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  margin: 0;
+  flex: 1;
+}
+
+.wiki-article-image {
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.wiki-stub-banner {
+  background: rgba(245, 200, 66, 0.1);
+  border: 1px solid rgba(245, 200, 66, 0.3);
+  border-radius: var(--radius);
+  padding: 0.625rem 0.875rem;
+  color: #f5c842;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.wiki-assoc-panel { margin-bottom: 1rem; }
+
+.wiki-assoc-panel-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.wiki-assoc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.wiki-assoc-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.3rem 0.6rem;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s;
+}
+.wiki-assoc-chip:hover { border-color: var(--accent); }
+
+.wiki-assoc-chip-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-heading);
+}
+
+.wiki-assoc-chip-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.wiki-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 1rem;
+}
+
+.wiki-tag {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: var(--surface-raised);
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+
+.wiki-section { margin-bottom: 1.25rem; }
+
+.wiki-section-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.wiki-private-section {
+  border: 1px solid rgba(200, 130, 30, 0.4);
+  background: rgba(200, 130, 30, 0.06);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+}
+
+.wiki-private-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #c8821e;
+  margin-bottom: 0.5rem;
+}
+
+/* --- Editor --- */
+
+.wiki-editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.75rem;
+}
+
+.wiki-editor-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+}
+
+.wiki-content-section { margin-bottom: 1rem; }
+
+.wiki-content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+.wiki-content-textarea {
+  width: 100%;
+  min-height: 180px;
+  resize: vertical;
+  font-family: monospace;
+  font-size: 0.875rem;
+  box-sizing: border-box;
+}
+
+.wiki-content-preview {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  min-height: 120px;
+  background: var(--surface-raised);
+}
+
+.wiki-private-content-section {
+  border: 1px solid rgba(200, 130, 30, 0.35);
+  background: rgba(200, 130, 30, 0.05);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+/* --- Association manager --- */
+
+.wiki-assoc-manager {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.wiki-assoc-manager-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.wiki-assoc-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.wiki-assoc-row:last-of-type { border-bottom: none; }
+
+.wiki-add-assoc {
+  margin-top: 0.625rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.wiki-add-assoc-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.wiki-stub-hint {
+  font-size: 0.75rem;
+  color: #f5c842;
+}
+
+/* --- Wiki link chip (inline in TipTap editor) --- */
+
+.wiki-link-chip {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 3px;
+  background: rgba(130, 170, 255, 0.15);
+  border: 1px solid rgba(130, 170, 255, 0.4);
+  color: #80aaff;
+  font-size: 0.875em;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+  vertical-align: baseline;
+  transition: background 0.1s, border-color 0.1s;
+  white-space: nowrap;
+}
+.wiki-link-chip:hover {
+  background: rgba(130, 170, 255, 0.25);
+  border-color: rgba(130, 170, 255, 0.7);
+}
+
+/* --- Wiki article modal --- */
+
+.wiki-article-modal {
+  max-width: 680px;
+  width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.wiki-modal-body {
+  overflow-y: auto;
+  flex: 1;
+  padding-top: 0.75rem;
+}

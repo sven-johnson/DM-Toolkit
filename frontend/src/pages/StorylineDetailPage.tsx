@@ -1,23 +1,21 @@
 import { useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
-  useSession,
-  useUpdateSession,
-  useAddNextScene,
-  useRemoveSceneFromSession,
-  useReorderSessionScenes,
-} from '../hooks/useSession'
+  useStoryline,
+  useUpdateStoryline,
+  useCreateStorylineScene,
+  useReorderStorylineScenes,
+  useDeleteScene,
+  useUpdateScene,
+} from '../hooks/useStorylines'
 import { useCharacters } from '../hooks/useCharacters'
-import { useCreateCheck, useUpdateCheck } from '../hooks/useChecks'
-import { useSessionRolls } from '../hooks/useRolls'
-import { useCampaignStorylines } from '../hooks/useCampaigns'
-import { useUpdateScene } from '../hooks/useStorylines'
+import { useCreateCheck } from '../hooks/useChecks'
 import { SceneList } from '../components/SceneList'
-import { CharacterCard } from '../components/CharacterCard'
 import { WikiArticleModal } from '../components/WikiArticleModal'
 import { useWikiArticles } from '../hooks/useWiki'
+import type { Check, Scene } from '../types'
+import { useUpdateCheck } from '../hooks/useChecks'
 import { calcSuccessPercent, formatModifier, getCheckModifier, SAVES, SKILLS } from '../constants/dnd'
-import type { Check } from '../types'
 
 interface SlashItem {
   type: 'skill' | 'save'
@@ -32,29 +30,32 @@ interface PendingCheck {
   label: string
 }
 
-export function SessionDetailPage() {
-  const { campaignId: campaignIdStr, sessionId: sessionIdStr } = useParams<{
+export function StorylineDetailPage() {
+  const { campaignId: campaignIdStr, storylineId: storylineIdStr } = useParams<{
     campaignId: string
-    sessionId: string
+    storylineId: string
   }>()
   const campaignId = Number(campaignIdStr)
-  const sessionId = Number(sessionIdStr)
-  const queryKey = ['session', sessionId]
+  const storylineId = Number(storylineIdStr)
+  const queryKey = ['storyline', storylineId]
 
-  const { data: session, isLoading, isError } = useSession(campaignId, sessionId)
+  const { data: storyline, isLoading, isError } = useStoryline(campaignId, storylineId)
   const { data: characters = [] } = useCharacters(campaignId)
   const { data: wikiArticles = [] } = useWikiArticles(campaignId)
-  const { data: sessionRolls = [] } = useSessionRolls(campaignId, sessionId)
-  const { data: storylines = [] } = useCampaignStorylines(campaignId)
 
-  const updateSession = useUpdateSession(campaignId, sessionId)
-  const addNextScene = useAddNextScene(campaignId, sessionId)
-  const removeScene = useRemoveSceneFromSession(campaignId, sessionId)
-  const reorderScenes = useReorderSessionScenes(campaignId, sessionId)
+  const updateStoryline = useUpdateStoryline(campaignId, storylineId)
+  const createScene = useCreateStorylineScene(campaignId, storylineId)
+  const reorderScenes = useReorderStorylineScenes(campaignId, storylineId)
+  const deleteScene = useDeleteScene(queryKey)
   const updateScene = useUpdateScene(queryKey)
   const createCheck = useCreateCheck(queryKey)
   const updateCheck = useUpdateCheck(queryKey)
 
+  const [addingScene, setAddingScene] = useState(false)
+  const [newSceneTitle, setNewSceneTitle] = useState('')
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [titleDraft, setTitleDraft] = useState('')
+  const [wikiModalId, setWikiModalId] = useState<number | null>(null)
   const [pendingCheck, setPendingCheck] = useState<PendingCheck | null>(null)
   const [pendingDc, setPendingDc] = useState(10)
   const [pendingCharIds, setPendingCharIds] = useState<number[]>([])
@@ -62,12 +63,19 @@ export function SessionDetailPage() {
   const [pendingEditId, setPendingEditId] = useState<number | null>(null)
   const pendingInsertLineRef = useRef<(() => void) | null>(null)
 
-  const [wikiModalId, setWikiModalId] = useState<number | null>(null)
-  const [showStorylineSelector, setShowStorylineSelector] = useState(false)
-  const [editingTitle, setEditingTitle] = useState(false)
-  const [titleDraft, setTitleDraft] = useState('')
-  const [editingRecap, setEditingRecap] = useState(false)
-  const [recapDraft, setRecapDraft] = useState('')
+  function handleAddScene(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newSceneTitle.trim()) return
+    createScene.mutate(
+      { title: newSceneTitle.trim() },
+      {
+        onSuccess: () => {
+          setNewSceneTitle('')
+          setAddingScene(false)
+        },
+      },
+    )
+  }
 
   function handleSelectSlashItem(sceneId: number, item: SlashItem, insertLine: () => void) {
     setPendingCheck({ sceneId, type: item.type, subtype: item.subtype, label: item.label })
@@ -79,7 +87,6 @@ export function SessionDetailPage() {
   }
 
   function handleEditCheck(check: Check) {
-    pendingInsertLineRef.current = null
     const isSkill = check.check_type === 'skill'
     const label = isSkill
       ? (SKILLS.find((s) => s.key === check.subtype)?.name ?? check.subtype)
@@ -94,6 +101,7 @@ export function SessionDetailPage() {
       setPendingCharIds(check.character_ids)
     }
     setPendingEditId(check.id)
+    pendingInsertLineRef.current = null
   }
 
   function handleConfirmCheck() {
@@ -102,13 +110,7 @@ export function SessionDetailPage() {
     if (pendingEditId !== null) {
       updateCheck.mutate(
         { id: pendingEditId, dc: pendingDc, character_ids: charIds },
-        {
-          onSuccess: () => {
-            setPendingCheck(null)
-            setPendingEditId(null)
-            pendingInsertLineRef.current = null
-          },
-        },
+        { onSuccess: () => { setPendingCheck(null); setPendingEditId(null) } },
       )
     } else {
       createCheck.mutate(
@@ -146,28 +148,19 @@ export function SessionDetailPage() {
 
   function commitTitle() {
     setEditingTitle(false)
-    if (session && titleDraft.trim() && titleDraft.trim() !== session.title) {
-      updateSession.mutate({ title: titleDraft.trim() })
+    if (titleDraft.trim() && storyline && titleDraft.trim() !== storyline.title) {
+      updateStoryline.mutate({ title: titleDraft.trim() })
     }
   }
-
-  function commitRecap() {
-    setEditingRecap(false)
-    if (session && recapDraft !== (session.recap_notes ?? '')) {
-      updateSession.mutate({ recap_notes: recapDraft })
-    }
-  }
-
-  const activeStoryline = storylines.find((sl) => sl.id === session?.active_storyline_id)
 
   if (isLoading) return <div className="status-text">Loading…</div>
-  if (isError || !session) return <div className="status-text error">Session not found.</div>
+  if (isError || !storyline) return <div className="status-text error">Storyline not found.</div>
 
   return (
     <div className="page">
       <div className="page-header">
-        <Link to={`/campaigns/${campaignId}/sessions`} className="back-link">
-          ← Sessions
+        <Link to={`/campaigns/${campaignId}/storylines`} className="back-link">
+          ← Storylines
         </Link>
         <div className="session-meta">
           {editingTitle ? (
@@ -184,157 +177,59 @@ export function SessionDetailPage() {
             />
           ) : (
             <h1
-              onClick={() => { setTitleDraft(session.title); setEditingTitle(true) }}
+              onClick={() => { setTitleDraft(storyline.title); setEditingTitle(true) }}
               title="Click to edit title"
               style={{ cursor: 'pointer' }}
             >
-              {session.title}
+              {storyline.title}
             </h1>
           )}
-          {session.date && <span className="session-date">{session.date}</span>}
+          <span className="session-date" style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            Storyline · {storyline.scenes.length} scene{storyline.scenes.length !== 1 ? 's' : ''}
+          </span>
         </div>
-      </div>
-
-      {/* Active storyline bar */}
-      <div className="session-storyline-bar">
-        <span className="session-storyline-label">
-          {activeStoryline ? (
-            <>
-              <span className="storyline-indicator">📖</span>
-              <Link to={`/campaigns/${campaignId}/storylines/${activeStoryline.id}`}>
-                {activeStoryline.title}
-              </Link>
-            </>
-          ) : (
-            <span className="text-muted">No active storyline</span>
-          )}
-        </span>
-        <button
-          className="btn-ghost btn-sm"
-          onClick={() => setShowStorylineSelector((s) => !s)}
-          type="button"
-        >
-          Change Storyline
+        <button className="btn-primary" onClick={() => setAddingScene((a) => !a)}>
+          + Add Scene
         </button>
       </div>
 
-      {showStorylineSelector && (
-        <div className="storyline-selector-row">
-          <select
+      {addingScene && (
+        <form className="create-form" onSubmit={handleAddScene}>
+          <input
             className="input"
-            defaultValue={session.active_storyline_id ?? ''}
-            onChange={(e) => {
-              const val = e.target.value === '' ? null : Number(e.target.value)
-              updateSession.mutate({ active_storyline_id: val })
-              setShowStorylineSelector(false)
-            }}
-          >
-            <option value="">No storyline</option>
-            {storylines.map((sl) => (
-              <option key={sl.id} value={sl.id}>
-                {sl.title}
-              </option>
-            ))}
-          </select>
-          <button
-            className="btn-ghost btn-sm"
-            onClick={() => setShowStorylineSelector(false)}
-            type="button"
-          >
+            placeholder="Scene title"
+            value={newSceneTitle}
+            onChange={(e) => setNewSceneTitle(e.target.value)}
+            autoFocus
+          />
+          <button className="btn-primary" type="submit" disabled={createScene.isPending}>
+            Add
+          </button>
+          <button className="btn-ghost" type="button" onClick={() => setAddingScene(false)}>
             Cancel
           </button>
-        </div>
+        </form>
       )}
-
-      {/* Recap notes */}
-      <div className="session-recap">
-        <div
-          className="session-recap-label"
-          onClick={() => {
-            setRecapDraft(session.recap_notes ?? '')
-            setEditingRecap(true)
-          }}
-        >
-          Recap Notes
-        </div>
-        {editingRecap ? (
-          <textarea
-            className="session-recap-input"
-            value={recapDraft}
-            onChange={(e) => setRecapDraft(e.target.value)}
-            onBlur={commitRecap}
-            rows={3}
-            autoFocus
-            placeholder="Session recap…"
-          />
-        ) : (
-          <div
-            className="session-recap-text"
-            onClick={() => { setRecapDraft(session.recap_notes ?? ''); setEditingRecap(true) }}
-          >
-            {session.recap_notes || <span className="text-muted">Click to add recap notes…</span>}
-          </div>
-        )}
-      </div>
 
       <div className="session-layout">
         <div className="session-main">
-          {session.scenes.length === 0 && (
-            <p className="empty-state">No scenes yet. Add one from the active storyline below.</p>
+          {storyline.scenes.length === 0 && !addingScene && (
+            <p className="empty-state">No scenes yet. Add one to start building this storyline.</p>
           )}
 
           <SceneList
-            scenes={session.scenes}
+            scenes={storyline.scenes}
             characters={characters}
             queryKey={queryKey}
             onReorder={(ids) => reorderScenes.mutate(ids)}
             onUpdate={(id, patch) => updateScene.mutate({ id, ...patch })}
-            onDelete={(id) => removeScene.mutate(id)}
+            onDelete={(id) => deleteScene.mutate(id)}
             onSelectSlashItem={handleSelectSlashItem}
             onEditCheck={handleEditCheck}
-            deleteLabel="Remove from session"
+            deleteLabel="Delete scene"
             wikiArticles={wikiArticles}
             onWikiLinkClick={(id) => setWikiModalId(id)}
           />
-
-          {/* Add Next Scene button */}
-          <div className="add-next-scene-row">
-            <button
-              className="btn-primary"
-              type="button"
-              disabled={addNextScene.isPending || !session.active_storyline_id}
-              onClick={() => addNextScene.mutate()}
-              title={!session.active_storyline_id ? 'Set an active storyline first' : undefined}
-            >
-              + Add Next Scene
-            </button>
-            {addNextScene.isError && (
-              <span className="status-text error" style={{ marginLeft: '0.5rem' }}>
-                No more scenes available in this storyline.
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="session-sidebar">
-          <div className="sidebar-title">Party</div>
-          {characters.length === 0 ? (
-            <p className="empty-state" style={{ fontSize: '0.85rem' }}>
-              No characters —{' '}
-              <Link to={`/campaigns/${campaignId}/characters`}>go to Characters page</Link> to add
-              your party.
-            </p>
-          ) : (
-            <div className="sidebar-character-list">
-              {characters.map((character) => (
-                <CharacterCard
-                  key={character.id}
-                  character={character}
-                  rolls={sessionRolls}
-                />
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
@@ -351,9 +246,9 @@ export function SessionDetailPage() {
             </h3>
 
             <div className="pending-check-field">
-              <label htmlFor="pending-dc">DC</label>
+              <label htmlFor="pending-dc-sl">DC</label>
               <input
-                id="pending-dc"
+                id="pending-dc-sl"
                 className="input"
                 type="number"
                 value={pendingDc}

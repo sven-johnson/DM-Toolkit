@@ -1,48 +1,48 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useCreateSession, useDeleteSession, useSessions } from "../hooks/useSessions";
+import { useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useCreateSession, useDeleteSession, useSessions } from '../hooks/useSessions'
+import { useCampaignStorylines } from '../hooks/useCampaigns'
 
 export function SessionsPage() {
-  const navigate = useNavigate();
-  const { data: sessions, isLoading, isError } = useSessions();
-  const createSession = useCreateSession();
-  const deleteSession = useDeleteSession();
+  const navigate = useNavigate()
+  const { campaignId: campaignIdStr } = useParams<{ campaignId: string }>()
+  const campaignId = Number(campaignIdStr)
 
-  const [creating, setCreating] = useState(false);
-  const [newTitle, setNewTitle] = useState("");
+  const { data: sessions, isLoading, isError } = useSessions(campaignId)
+  const { data: storylines = [] } = useCampaignStorylines(campaignId)
+  const createSession = useCreateSession(campaignId)
+  const deleteSession = useDeleteSession(campaignId)
+
+  const [creating, setCreating] = useState(false)
+  const [newTitle, setNewTitle] = useState('')
+  const [selectedStorylineId, setSelectedStorylineId] = useState<number | ''>('')
 
   function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newTitle.trim()) return;
+    e.preventDefault()
+    if (!newTitle.trim()) return
     createSession.mutate(
-      { title: newTitle.trim() },
+      {
+        title: newTitle.trim(),
+        storyline_id: selectedStorylineId !== '' ? selectedStorylineId : null,
+      },
       {
         onSuccess: (session) => {
-          setNewTitle("");
-          setCreating(false);
-          navigate(`/sessions/${session.id}`);
+          setNewTitle('')
+          setSelectedStorylineId('')
+          setCreating(false)
+          navigate(`/campaigns/${campaignId}/sessions/${session.id}`)
         },
       },
-    );
-  }
-
-  function handleLogout() {
-    localStorage.removeItem("auth_token");
-    navigate("/login");
+    )
   }
 
   return (
     <div className="page">
       <div className="page-header">
         <h1>Sessions</h1>
-        <div className="header-actions">
-          <button className="btn-primary" onClick={() => setCreating((c) => !c)}>
-            + New Session
-          </button>
-          <button className="btn-ghost" onClick={handleLogout}>
-            Log out
-          </button>
-        </div>
+        <button className="btn-primary" onClick={() => setCreating((c) => !c)}>
+          + New Session
+        </button>
       </div>
 
       {creating && (
@@ -54,6 +54,20 @@ export function SessionsPage() {
             onChange={(e) => setNewTitle(e.target.value)}
             autoFocus
           />
+          <select
+            className="input"
+            value={selectedStorylineId}
+            onChange={(e) =>
+              setSelectedStorylineId(e.target.value === '' ? '' : Number(e.target.value))
+            }
+          >
+            <option value="">No storyline</option>
+            {storylines.map((sl) => (
+              <option key={sl.id} value={sl.id}>
+                {sl.title}
+              </option>
+            ))}
+          </select>
           <button className="btn-primary" type="submit" disabled={createSession.isPending}>
             Create
           </button>
@@ -72,7 +86,10 @@ export function SessionsPage() {
         )}
         {sessions?.map((session) => (
           <div key={session.id} className="session-card">
-            <Link to={`/sessions/${session.id}`} className="session-link">
+            <Link
+              to={`/campaigns/${campaignId}/sessions/${session.id}`}
+              className="session-link"
+            >
               <span className="session-title">{session.title}</span>
               {session.date && <span className="session-date">{session.date}</span>}
             </Link>
@@ -87,5 +104,5 @@ export function SessionsPage() {
         ))}
       </div>
     </div>
-  );
+  )
 }

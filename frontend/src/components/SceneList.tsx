@@ -12,7 +12,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { SceneCard } from './SceneCard'
-import type { Character, Scene } from '../types'
+import type { Character, Check, Scene } from '../types'
 
 interface SlashItem {
   type: 'skill' | 'save'
@@ -20,24 +20,47 @@ interface SlashItem {
   label: string
 }
 
+interface ScenePatch {
+  title?: string
+  body?: string
+  dm_notes?: string | null
+  scene_type?: string
+  puzzle_clues?: string | null
+  puzzle_solution?: string | null
+}
+
+interface WikiArticleRef {
+  id: number
+  title: string
+  category: string
+}
+
 interface Props {
   scenes: Scene[]
   characters: Character[]
-  sessionId: number
+  queryKey: unknown[]
+  deleteLabel: string
   onReorder: (ids: number[]) => void
-  onUpdate: (id: number, patch: { title?: string; body?: string }) => void
+  onUpdate: (id: number, patch: ScenePatch) => void
   onDelete: (id: number) => void
-  onSelectSlashItem: (sceneId: number, item: SlashItem) => void
+  onSelectSlashItem: (sceneId: number, item: SlashItem, insertLine: () => void) => void
+  onEditCheck: (check: Check) => void
+  wikiArticles?: WikiArticleRef[]
+  onWikiLinkClick?: (articleId: number, title: string) => void
 }
 
 export function SceneList({
   scenes,
   characters,
-  sessionId,
+  queryKey,
+  deleteLabel,
   onReorder,
   onUpdate,
   onDelete,
   onSelectSlashItem,
+  onEditCheck,
+  wikiArticles,
+  onWikiLinkClick,
 }: Props) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -68,10 +91,14 @@ export function SceneList({
               key={scene.id}
               scene={scene}
               characters={characters}
-              sessionId={sessionId}
+              queryKey={queryKey}
+              deleteLabel={deleteLabel}
               onUpdate={onUpdate}
               onDelete={onDelete}
               onSelectSlashItem={onSelectSlashItem}
+              onEditCheck={onEditCheck}
+              wikiArticles={wikiArticles}
+              onWikiLinkClick={onWikiLinkClick}
             />
           ))}
         </div>

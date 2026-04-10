@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker compose:*)",
+      "Bash(python -m alembic upgrade head)",
+      "Bash(python -m alembic history)",
+      "Bash(pip show:*)",
+      "Bash(alembic upgrade:*)",
+      "Bash(python -c ':*)"
+    ]
+  }
+}

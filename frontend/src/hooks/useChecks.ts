@@ -19,7 +19,7 @@ interface UpdateCheckBody {
   order_index?: number
 }
 
-export function useCreateCheck(sessionId: number) {
+export function useCreateCheck(queryKey: unknown[]) {
   const queryClient = useQueryClient()
   return useMutation<Check, Error, CreateCheckBody>({
     mutationFn: async (body) => {
@@ -30,12 +30,12 @@ export function useCreateCheck(sessionId: number) {
       return data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['session', sessionId] })
+      queryClient.invalidateQueries({ queryKey })
     },
   })
 }
 
-export function useUpdateCheck(sessionId: number) {
+export function useUpdateCheck(queryKey: unknown[]) {
   const queryClient = useQueryClient()
   return useMutation<Check, Error, UpdateCheckBody>({
     mutationFn: async ({ id, ...body }) => {
@@ -43,24 +43,24 @@ export function useUpdateCheck(sessionId: number) {
       return data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['session', sessionId] })
+      queryClient.invalidateQueries({ queryKey })
     },
   })
 }
 
-export function useDeleteCheck(sessionId: number) {
+export function useDeleteCheck(queryKey: unknown[]) {
   const queryClient = useQueryClient()
   return useMutation<void, Error, number>({
     mutationFn: async (id) => {
       await apiClient.delete(`/checks/${id}`)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['session', sessionId] })
+      queryClient.invalidateQueries({ queryKey })
     },
   })
 }
 
-export function useReorderChecks(sessionId: number) {
+export function useReorderChecks(queryKey: unknown[]) {
   const queryClient = useQueryClient()
   return useMutation<void, Error, { sceneId: number; checkIds: number[] }>({
     mutationFn: async ({ sceneId, checkIds }) => {
@@ -69,7 +69,7 @@ export function useReorderChecks(sessionId: number) {
       })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['session', sessionId] })
+      queryClient.invalidateQueries({ queryKey })
     },
   })
 }
