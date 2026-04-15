@@ -585,3 +585,73 @@ class WikiExportArticle(BaseModel):
 class WikiExportResponse(BaseModel):
     campaign_id: int
     articles: list[WikiExportArticle]
+
+
+# ---------------------------------------------------------------------------
+# Storyline import/export
+# ---------------------------------------------------------------------------
+
+
+class StorylineExportEnemy(BaseModel):
+    name: str
+    quantity: int
+
+
+class StorylineExportShopItem(BaseModel):
+    name: str
+    description: Optional[str] = None
+    price: int
+    currency: str
+
+
+class StorylineExportScene(BaseModel):
+    title: str
+    body: str
+    dm_notes: Optional[str] = None
+    scene_type: str
+    puzzle_clues: Optional[str] = None
+    puzzle_solution: Optional[str] = None
+    enemies: list[StorylineExportEnemy] = []
+    shop_items: list[StorylineExportShopItem] = []
+
+
+class StorylineExportItem(BaseModel):
+    title: str
+    description: Optional[str] = None
+    scenes: list[StorylineExportScene] = []
+
+
+class StorylineExportResponse(BaseModel):
+    campaign_id: int
+    storylines: list[StorylineExportItem]
+
+
+# Import uses the same scene/storyline shape as export
+class StorylineImportScene(BaseModel):
+    title: str
+    body: str = ""
+    dm_notes: Optional[str] = None
+    scene_type: str = "story"
+    puzzle_clues: Optional[str] = None
+    puzzle_solution: Optional[str] = None
+    enemies: list[StorylineExportEnemy] = []
+    shop_items: list[StorylineExportShopItem] = []
+
+
+class StorylineImportItem(BaseModel):
+    title: str
+    description: Optional[str] = None
+    scenes: list[StorylineImportScene] = []
+
+
+class StorylineImportRequest(BaseModel):
+    campaign_id: int
+    storylines: list[StorylineImportItem]
+
+
+class StorylineImportResult(BaseModel):
+    storylines_created: int
+    storylines_updated: int
+    scenes_created: int
+    scenes_updated: int
+    errors: list[str] = []

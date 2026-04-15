@@ -1,6 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import apiClient from '../api/client'
-import type { Scene, SceneEnemy, SceneShopItem, Storyline, StorylineWithScenes } from '../types'
+import type {
+  Scene,
+  SceneEnemy,
+  SceneShopItem,
+  Storyline,
+  StorylineExportResponse,
+  StorylineImportRequest,
+  StorylineImportResult,
+  StorylineWithScenes,
+} from '../types'
 
 export function useStoryline(campaignId: number, storylineId: number) {
   return useQuery<StorylineWithScenes>({
@@ -184,4 +193,55 @@ export function useDeleteShopItem(queryKey: unknown[]) {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   })
+}
+
+// ---------------------------------------------------------------------------
+// Import / export
+// ---------------------------------------------------------------------------
+
+export function useImportStorylines(campaignId: number) {
+  const queryClient = useQueryClient()
+  return useMutation<StorylineImportResult, Error, StorylineImportRequest>({
+    mutationFn: async (body) => {
+      const { data } = await apiClient.post<StorylineImportResult>(
+        `/campaigns/${campaignId}/storylines/import`,
+        body,
+      )
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaigns', campaignId, 'storylines'] })
+      queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] })
+    },
+  })
+}
+
+export async function exportAllStorylines(campaignId: number): Promise<void> {
+  const { data } = await apiClient.get<StorylineExportResponse>(
+    `/campaigns/${campaignId}/storylines/export`,
+  )
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'storylines-export.json'
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+export async function exportStoryline(
+  campaignId: number,
+  storylineId: number,
+  title: string,
+): Promise<void> {
+  const { data } = await apiClient.get<StorylineExportResponse>(
+    `/campaigns/${campaignId}/storylines/${storylineId}/export`,
+  )
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `storyline-${title.toLowerCase().replace(/\s+/g, '-')}.json`
+  link.click()
+  URL.revokeObjectURL(url)
 }

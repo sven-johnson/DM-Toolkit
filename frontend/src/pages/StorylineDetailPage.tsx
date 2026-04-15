@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
+  exportStoryline,
+  useImportStorylines,
   useStoryline,
   useUpdateStoryline,
   useCreateStorylineScene,
@@ -13,7 +15,7 @@ import { useCreateCheck } from '../hooks/useChecks'
 import { SceneList } from '../components/SceneList'
 import { WikiArticleModal } from '../components/WikiArticleModal'
 import { useWikiArticles } from '../hooks/useWiki'
-import type { Check } from '../types'
+import type { Check, StorylineImportRequest } from '../types'
 import { useUpdateCheck } from '../hooks/useChecks'
 import { calcSuccessPercent, formatModifier, getCheckModifier, SAVES, SKILLS } from '../constants/dnd'
 
@@ -50,7 +52,10 @@ export function StorylineDetailPage() {
   const updateScene = useUpdateScene(queryKey)
   const createCheck = useCreateCheck(queryKey)
   const updateCheck = useUpdateCheck(queryKey)
+  const importStorylines = useImportStorylines(campaignId)
+  const importFileRef = useRef<HTMLInputElement>(null)
 
+  const [importResult, setImportResult] = useState<{ message: string; isError: boolean } | null>(null)
   const [addingScene, setAddingScene] = useState(false)
   const [newSceneTitle, setNewSceneTitle] = useState('')
   const [editingTitle, setEditingTitle] = useState(false)
@@ -62,6 +67,40 @@ export function StorylineDetailPage() {
   const [pendingAllChars, setPendingAllChars] = useState(true)
   const [pendingEditId, setPendingEditId] = useState<number | null>(null)
   const pendingInsertLineRef = useRef<(() => void) | null>(null)
+
+  function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target?.result as string) as StorylineImportRequest
+        importStorylines.mutate(
+          { ...parsed, campaign_id: campaignId },
+          {
+            onSuccess: (result) => {
+              const parts = [
+                `${result.storylines_created} storyline(s) created`,
+                `${result.storylines_updated} updated`,
+                `${result.scenes_created} scene(s) created`,
+                `${result.scenes_updated} updated`,
+              ]
+              const msg = parts.join(', ') + (result.errors.length ? `. Errors: ${result.errors.join('; ')}` : '.')
+              setImportResult({ message: msg, isError: result.errors.length > 0 })
+            },
+            onError: (err) => {
+              setImportResult({ message: err.message ?? 'Import failed.', isError: true })
+            },
+          },
+        )
+      } catch {
+        setImportResult({ message: 'Invalid JSON file.', isError: true })
+      }
+    }
+    reader.readAsText(file)
+    // Reset so the same file can be re-imported if needed
+    e.target.value = ''
+  }
 
   function handleAddScene(e: React.FormEvent) {
     e.preventDefault()
@@ -188,10 +227,51 @@ export function StorylineDetailPage() {
             Storyline · {storyline.scenes.length} scene{storyline.scenes.length !== 1 ? 's' : ''}
           </span>
         </div>
-        <button className="btn-primary" onClick={() => setAddingScene((a) => !a)}>
-          + Add Scene
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <button
+            className="btn-ghost"
+            type="button"
+            onClick={() => exportStoryline(campaignId, storylineId, storyline?.title ?? 'storyline')}
+          >
+            Export JSON
+          </button>
+          <button
+            className="btn-ghost"
+            type="button"
+            onClick={() => importFileRef.current?.click()}
+            disabled={importStorylines.isPending}
+          >
+            {importStorylines.isPending ? 'Importing…' : 'Import JSON'}
+          </button>
+          <input
+            ref={importFileRef}
+            type="file"
+            accept="application/json,.json"
+            style={{ display: 'none' }}
+            onChange={handleImportFile}
+          />
+          <button className="btn-primary" onClick={() => setAddingScene((a) => !a)}>
+            + Add Scene
+          </button>
+        </div>
       </div>
+
+      {importResult && (
+        <div
+          className={importResult.isError ? 'form-error' : 'form-success'}
+          style={{ marginBottom: '1rem' }}
+        >
+          {importResult.message}
+          <button
+            className="btn-ghost"
+            type="button"
+            onClick={() => setImportResult(null)}
+            style={{ marginLeft: '0.75rem', padding: '0 0.4rem', fontSize: '0.8rem' }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {addingScene && (
         <form className="create-form" onSubmit={handleAddScene}>

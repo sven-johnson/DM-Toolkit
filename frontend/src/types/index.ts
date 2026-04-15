@@ -271,3 +271,54 @@ export interface WikiSearchResult {
   is_stub: boolean
   snippet: string | null
 }
+
+// ---------------------------------------------------------------------------
+// Storyline import / export
+// ---------------------------------------------------------------------------
+
+export interface StorylineExportEnemy {
+  name: string
+  quantity: number
+}
+
+export interface StorylineExportShopItem {
+  name: string
+  description: string | null
+  price: number
+  currency: string
+}
+
+export interface StorylineExportScene {
+  title: string
+  body: string
+  dm_notes: string | null
+  scene_type: string
+  puzzle_clues: string | null
+  puzzle_solution: string | null
+  enemies: StorylineExportEnemy[]
+  shop_items: StorylineExportShopItem[]
+}
+
+export interface StorylineExportItem {
+  title: string
+  description: string | null
+  scenes: StorylineExportScene[]
+}
+
+export interface StorylineExportResponse {
+  campaign_id: number
+  storylines: StorylineExportItem[]
+}
+
+export interface StorylineImportRequest {
+  campaign_id: number
+  storylines: StorylineExportItem[]
+}
+
+export interface StorylineImportResult {
+  storylines_created: number
+  storylines_updated: number
+  scenes_created: number
+  scenes_updated: number
+  errors: string[]
+}
