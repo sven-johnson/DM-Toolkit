@@ -33,10 +33,7 @@ def _get_engine():
                 "Copy backend/.env.example to backend/.env and fill in values."
             )
         url = _normalize_url(url)
-        connect_args = {}
-        if "railway" in url:
-            connect_args = {"ssl": {"ssl_mode": "VERIFY_IDENTITY"}}
-        _engine = create_engine(url, pool_pre_ping=True, connect_args=connect_args)
+        _engine = create_engine(url, pool_pre_ping=True)
         _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
     return _engine, _SessionLocal
 
