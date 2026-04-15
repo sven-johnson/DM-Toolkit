@@ -3,7 +3,7 @@ builder = "nixpacks"
 
 [deploy]
 startCommand = "bash start.sh"
-restartPolicyType = "on-failure"
+restartPolicyType = "On Failure"
 restartPolicyMaxRetries = 3
 
 [[deploy.healthcheck]]
