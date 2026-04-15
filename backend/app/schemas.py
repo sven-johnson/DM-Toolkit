@@ -445,6 +445,21 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class MeResponse(BaseModel):
+    username: str
+
+
+class UpdateUsernameRequest(BaseModel):
+    current_password: str
+    new_username: str
+
+
+class UpdatePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+    confirm_password: str
+
+
 # ---------------------------------------------------------------------------
 # Wiki
 # ---------------------------------------------------------------------------
@@ -485,6 +500,15 @@ class WikiArticleOut(BaseModel):
     private_content: str
     created_at: datetime
     updated_at: datetime
+
+
+class WikiSearchResult(BaseModel):
+    id: int
+    title: str
+    category: str
+    tags: Optional[list[str]] = None
+    is_stub: bool
+    snippet: Optional[str] = None
 
 
 class WikiAssociationDisplay(BaseModel):

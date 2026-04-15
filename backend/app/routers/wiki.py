@@ -20,6 +20,7 @@ from ..schemas import (
     WikiExportResponse,
     WikiImportRequest,
     WikiImportResult,
+    WikiSearchResult,
 )
 
 router = APIRouter()
@@ -71,7 +72,23 @@ def _hydrate_associations(
     return result
 
 
-# Declare /export and /import before /{article_id} so literal segments take precedence
+def _make_snippet(text: str, query: str, radius: int = 90) -> Optional[str]:
+    if not text:
+        return None
+    idx = text.lower().find(query.lower())
+    if idx == -1:
+        return None
+    start = max(0, idx - radius)
+    end = min(len(text), idx + len(query) + radius)
+    snippet = text[start:end]
+    if start > 0:
+        snippet = "…" + snippet
+    if end < len(text):
+        snippet = snippet + "…"
+    return snippet
+
+
+# Declare /export, /import, /search before /{article_id} so literal segments take precedence
 
 
 @router.get("/export", response_model=WikiExportResponse)
@@ -297,6 +314,53 @@ def import_wiki(
         stubs_created=stubs_created,
         errors=errors,
     )
+
+
+@router.get("/search", response_model=list[WikiSearchResult])
+def search_wiki(
+    campaign_id: int = Query(...),
+    q: str = Query(...),
+    db: DBSession = Depends(get_db),
+    _: str = Depends(verify_token),
+) -> list[WikiSearchResult]:
+    if not db.query(Campaign).filter(Campaign.id == campaign_id).first():
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    q_stripped = q.strip()
+    if not q_stripped:
+        return []
+
+    q_lower = q_stripped.lower()
+
+    all_articles = (
+        db.query(WikiArticle)
+        .filter(WikiArticle.campaign_id == campaign_id)
+        .order_by(WikiArticle.title)
+        .all()
+    )
+
+    results: list[WikiSearchResult] = []
+    for a in all_articles:
+        in_title = q_lower in a.title.lower()
+        in_content = q_lower in (a.public_content or "").lower()
+        in_tags = bool(a.tags and any(q_lower in t.lower() for t in a.tags))
+
+        if in_title or in_content or in_tags:
+            snippet = _make_snippet(a.public_content or "", q_stripped) if in_content and not in_title else None
+            results.append(
+                WikiSearchResult(
+                    id=a.id,
+                    title=a.title,
+                    category=a.category,
+                    tags=a.tags,
+                    is_stub=a.is_stub,
+                    snippet=snippet,
+                )
+            )
+
+    # Title matches first, then alphabetically within each group
+    results.sort(key=lambda r: (0 if q_lower in r.title.lower() else 1, r.title.lower()))
+    return results[:20]
 
 
 @router.get("", response_model=list[WikiArticleOut])

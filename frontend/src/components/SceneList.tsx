@@ -47,6 +47,7 @@ interface Props {
   onEditCheck: (check: Check) => void
   wikiArticles?: WikiArticleRef[]
   onWikiLinkClick?: (articleId: number, title: string) => void
+  campaignId?: number
 }
 
 export function SceneList({
@@ -61,6 +62,7 @@ export function SceneList({
   onEditCheck,
   wikiArticles,
   onWikiLinkClick,
+  campaignId,
 }: Props) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -99,6 +101,7 @@ export function SceneList({
               onEditCheck={onEditCheck}
               wikiArticles={wikiArticles}
               onWikiLinkClick={onWikiLinkClick}
+              campaignId={campaignId}
             />
           ))}
         </div>

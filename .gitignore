@@ -1,0 +1,37 @@
+# Environment files — never commit real credentials
+/.env
+/backend/.env
+/frontend/.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Node / frontend
+node_modules/
+/frontend/dist/
+/frontend/.env.local
+
+# Coverage & test output
+coverage/
+.coverage
+lcov.info
+*.lcov
+htmlcov/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo

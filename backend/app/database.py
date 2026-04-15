@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -6,11 +7,18 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
-import os
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError(
+        "DATABASE_URL environment variable is not set. "
+        "Copy backend/.env.example to backend/.env and fill in values."
+    )
 
-DATABASE_URL = os.environ["DATABASE_URL"]
+connect_args = {}
+if "railway" in DATABASE_URL:
+    connect_args = {"ssl": {"ssl_mode": "VERIFY_IDENTITY"}}
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+engine = create_engine(DATABASE_URL, pool_pre_ping=True, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

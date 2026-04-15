@@ -8,6 +8,7 @@ import type {
   WikiExportResponse,
   WikiImportRequest,
   WikiImportResult,
+  WikiSearchResult,
 } from '../types'
 
 interface WikiFilters {
@@ -30,6 +31,21 @@ export function useWikiArticles(campaignId: number, filters: WikiFilters = {}) {
       return data
     },
     enabled: !!campaignId,
+    staleTime: 0,
+  })
+}
+
+export function useWikiSearch(campaignId: number, q: string) {
+  return useQuery<WikiSearchResult[]>({
+    queryKey: ['campaigns', campaignId, 'wiki', 'search', q],
+    queryFn: async () => {
+      if (!q.trim()) return []
+      const { data } = await apiClient.get<WikiSearchResult[]>('/wiki/search', {
+        params: { campaign_id: campaignId, q },
+      })
+      return data
+    },
+    enabled: !!campaignId && !!q.trim(),
     staleTime: 0,
   })
 }

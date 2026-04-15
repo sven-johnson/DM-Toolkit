@@ -11,6 +11,7 @@ import { RollHistoryPage } from './pages/RollHistoryPage'
 import { WikiListPage } from './pages/WikiListPage'
 import { WikiArticlePage } from './pages/WikiArticlePage'
 import { WikiEditorPage } from './pages/WikiEditorPage'
+import { UserSettingsPage } from './pages/UserSettingsPage'
 import { Nav } from './components/Nav'
 
 const queryClient = new QueryClient({
@@ -119,6 +120,14 @@ function AppLayout() {
           element={
             <RequireAuth>
               <RollHistoryPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <RequireAuth>
+              <UserSettingsPage />
             </RequireAuth>
           }
         />

@@ -360,3 +360,12 @@ class Roll(Base):
 
     check: Mapped["Check"] = relationship("Check", back_populates="rolls")
     character: Mapped["Character"] = relationship("Character", back_populates="rolls")
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    username: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)

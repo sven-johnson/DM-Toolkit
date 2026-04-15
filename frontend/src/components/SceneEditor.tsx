@@ -20,6 +20,7 @@ import { SKILLS, SAVES } from '../constants/dnd'
 import { FormattingToolbar } from './FormattingToolbar'
 import { CheckLine } from './CheckLineExtension'
 import { createWikiLinkExtension } from './WikiLinkExtension'
+import { WikiExplorerModal } from './WikiExplorerModal'
 
 interface CheckSlashItem {
   type: 'skill' | 'save'
@@ -34,7 +35,12 @@ interface WikiSlashItem {
   category: string
 }
 
-type AnySlashItem = CheckSlashItem | WikiSlashItem
+interface ExplorerSlashItem {
+  type: 'explorer'
+  label: string
+}
+
+type AnySlashItem = CheckSlashItem | WikiSlashItem | ExplorerSlashItem
 
 // Public interface: only check items bubble up to the parent
 interface SlashItem {
@@ -127,7 +133,9 @@ const SlashCommandList = forwardRef<SlashCommandListHandle, SlashCommandListProp
             }}
             type="button"
           >
-            {item.type === 'wiki'
+            {item.type === 'explorer'
+              ? <><span className="slash-menu-wiki-icon">🔍</span> {item.label}</>
+              : item.type === 'wiki'
               ? <><span className="slash-menu-wiki-icon">📖</span> {item.label}</>
               : item.type === 'skill'
               ? <>⚠️ {item.label}</>
@@ -160,9 +168,10 @@ interface Props {
   onSelectSlashItem: (item: SlashItem, insertLine: () => void) => void
   wikiArticles?: WikiArticleRef[]
   onWikiLinkClick?: (articleId: number, title: string) => void
+  campaignId?: number
 }
 
-export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles = [], onWikiLinkClick }: Props) {
+export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles = [], onWikiLinkClick, campaignId = 0 }: Props) {
   const [isFocused, setIsFocused] = useState(false)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const onSaveRef = useRef(onSave)
@@ -178,6 +187,12 @@ export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles =
   const [slashPopup, setSlashPopup] = useState<SlashPopup | null>(null)
   const setSlashRef = useRef(setSlashPopup)
   const slashListRef = useRef<SlashCommandListHandle>(null)
+
+  const [explorerOpen, setExplorerOpen] = useState(false)
+  const setExplorerOpenRef = useRef(setExplorerOpen)
+  const explorerEditorRef = useRef<Editor | null>(null)
+  const campaignIdRef = useRef(campaignId)
+  useEffect(() => { campaignIdRef.current = campaignId }, [campaignId])
 
   const handleDebouncedSave = useCallback((md: string) => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
@@ -205,6 +220,12 @@ export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles =
             }) {
               ed.chain().focus().deleteRange(range).run()
 
+              if (item.type === 'explorer') {
+                explorerEditorRef.current = ed
+                setExplorerOpenRef.current(true)
+                return
+              }
+
               if (item.type === 'wiki') {
                 // Insert inline wiki link node directly — no parent callback needed
                 ed.chain().insertContent({
@@ -230,11 +251,16 @@ export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles =
             },
             items({ query }: { query: string }): AnySlashItem[] {
               const q = query.toLowerCase()
-              // Wiki items: prefix-match on "wiki" or fuzzy-match article titles
-              const isWikiQuery = 'wiki'.startsWith(q) || q.startsWith('wiki')
+              // Wiki context: prefix-match on "wiki" or user is typing after "wiki"
+              const isWikiContext = 'wiki'.startsWith(q) || q.startsWith('wiki')
               const wikiQuery = q.startsWith('wiki') ? q.slice(4).trim() : ''
 
-              const wikiItems: WikiSlashItem[] = isWikiQuery
+              // Explorer item: always first when in wiki context
+              const explorerItems: ExplorerSlashItem[] = isWikiContext
+                ? [{ type: 'explorer', label: 'Wiki Explorer' }]
+                : []
+
+              const wikiItems: WikiSlashItem[] = isWikiContext
                 ? wikiArticlesRef.current
                     .filter((a) => !wikiQuery || fuzzyMatch(wikiQuery, a.title))
                     .map((a) => ({ type: 'wiki', articleId: a.id, label: a.title, category: a.category }))
@@ -244,7 +270,7 @@ export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles =
                 (item) => fuzzyMatch(query, item.label) || fuzzyMatch(query, item.subtype),
               )
 
-              return [...wikiItems, ...checkItems]
+              return [...explorerItems, ...wikiItems, ...checkItems]
             },
             render() {
               return {
@@ -326,6 +352,16 @@ export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles =
     }
   }, [])
 
+  function handleExplorerSelect(id: number, title: string, category: string) {
+    if (explorerEditorRef.current) {
+      explorerEditorRef.current.chain().focus().insertContent({
+        type: 'wikiLink',
+        attrs: { articleId: id, articleTitle: title, articleCategory: category },
+      }).run()
+    }
+    setExplorerOpen(false)
+  }
+
   return (
     <div className="scene-editor">
       {editor && isFocused && <FormattingToolbar editor={editor} />}
@@ -347,6 +383,15 @@ export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles =
               command={slashPopup.command}
             />
           </div>,
+          document.body,
+        )}
+      {explorerOpen && campaignIdRef.current > 0 &&
+        createPortal(
+          <WikiExplorerModal
+            campaignId={campaignIdRef.current}
+            onSelect={handleExplorerSelect}
+            onClose={() => setExplorerOpen(false)}
+          />,
           document.body,
         )}
     </div>

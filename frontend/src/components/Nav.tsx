@@ -57,6 +57,13 @@ export function Nav() {
               ← Campaigns
             </Link>
           )}
+          <Link
+            to="/settings"
+            className={`nav-link nav-settings${isActive('/settings') ? ' active' : ''}`}
+            title="Settings"
+          >
+            ⚙
+          </Link>
           <button className="nav-link nav-logout" type="button" onClick={handleLogout}>
             Log out
           </button>

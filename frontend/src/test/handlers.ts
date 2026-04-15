@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw'
 
-const BASE = 'http://localhost:8000'
+export const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 // ---------------------------------------------------------------------------
 // Shared fixture data

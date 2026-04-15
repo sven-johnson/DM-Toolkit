@@ -229,6 +229,7 @@ export function StorylineDetailPage() {
             deleteLabel="Delete scene"
             wikiArticles={wikiArticles}
             onWikiLinkClick={(id) => setWikiModalId(id)}
+            campaignId={campaignId}
           />
         </div>
       </div>

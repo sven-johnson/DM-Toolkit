@@ -295,6 +295,7 @@ export function SessionDetailPage() {
             deleteLabel="Remove from session"
             wikiArticles={wikiArticles}
             onWikiLinkClick={(id) => setWikiModalId(id)}
+            campaignId={campaignId}
           />
 
           {/* Add Next Scene button */}

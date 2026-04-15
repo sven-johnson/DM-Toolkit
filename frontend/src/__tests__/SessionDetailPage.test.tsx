@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { SessionDetailPage } from '../pages/SessionDetailPage'
 import { server } from '../test/server'
-import { fixtureSession, fixtureCharacter, fixtureCheck, fixtureScene } from '../test/handlers'
+import { BASE, fixtureSession, fixtureCharacter, fixtureCheck, fixtureScene } from '../test/handlers'
 
 // ---------------------------------------------------------------------------
 // Mock SceneEditor — Tiptap / ProseMirror cannot run in jsdom
@@ -65,7 +65,7 @@ beforeEach(() => {
 
 test('shows loading state while fetching session', () => {
   server.use(
-    http.get('http://localhost:8000/sessions/:id', () => new Promise(() => {})),
+    http.get(`${BASE}/sessions/:id`, () => new Promise(() => {})),
   )
   renderPage()
   expect(screen.getByText('Loading…')).toBeInTheDocument()
@@ -73,7 +73,7 @@ test('shows loading state while fetching session', () => {
 
 test('shows error state when session is not found', async () => {
   server.use(
-    http.get('http://localhost:8000/sessions/:id', () =>
+    http.get(`${BASE}/sessions/:id`, () =>
       HttpResponse.json({ detail: 'Not found' }, { status: 404 }),
     ),
   )
@@ -107,7 +107,7 @@ test('shows back link to sessions list', async () => {
 
 test('shows empty state when session has no scenes', async () => {
   server.use(
-    http.get('http://localhost:8000/sessions/:id', () =>
+    http.get(`${BASE}/sessions/:id`, () =>
       HttpResponse.json({ ...fixtureSession, scenes: [] }),
     ),
   )
@@ -127,7 +127,7 @@ test('renders existing scenes', async () => {
 test('renders check widgets when scene has checks', async () => {
   const sceneWithCheck = { ...fixtureScene, checks: [fixtureCheck] }
   server.use(
-    http.get('http://localhost:8000/sessions/:id', () =>
+    http.get(`${BASE}/sessions/:id`, () =>
       HttpResponse.json({ ...fixtureSession, scenes: [sceneWithCheck] }),
     ),
   )
@@ -169,7 +169,7 @@ test('submitting add scene form creates a new scene', async () => {
   const user = userEvent.setup()
   let posted = false
   server.use(
-    http.post('http://localhost:8000/sessions/:id/scenes', async ({ request }) => {
+    http.post(`${BASE}/sessions/:id/scenes`, async ({ request }) => {
       const body = (await request.json()) as { title: string }
       posted = true
       return HttpResponse.json(
@@ -206,7 +206,7 @@ test('does not submit add scene form with empty title', async () => {
   const user = userEvent.setup()
   let posted = false
   server.use(
-    http.post('http://localhost:8000/sessions/:id/scenes', async () => {
+    http.post(`${BASE}/sessions/:id/scenes`, async () => {
       posted = true
       return HttpResponse.json({}, { status: 201 })
     }),
@@ -227,7 +227,7 @@ test('does not submit add scene form with empty title', async () => {
 
 test('shows empty sidebar with link to characters page when no characters', async () => {
   server.use(
-    http.get('http://localhost:8000/characters', () => HttpResponse.json([])),
+    http.get(`${BASE}/characters`, () => HttpResponse.json([])),
   )
   renderPage()
   await waitFor(() => screen.getByRole('heading', { name: 'Session One' }))
@@ -349,7 +349,7 @@ test('confirming pending check calls the create check API', async () => {
   const user = userEvent.setup()
   let capturedBody: Record<string, unknown> | null = null
   server.use(
-    http.post('http://localhost:8000/scenes/:id/checks', async ({ request, params }) => {
+    http.post(`${BASE}/scenes/:id/checks`, async ({ request, params }) => {
       capturedBody = (await request.json()) as Record<string, unknown>
       return HttpResponse.json(
         {

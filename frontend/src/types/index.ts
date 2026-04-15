@@ -262,3 +262,12 @@ export interface WikiExportAssociation {
   target_category: string
   association_label: string
 }
+
+export interface WikiSearchResult {
+  id: number
+  title: string
+  category: string
+  tags: string[] | null
+  is_stub: boolean
+  snippet: string | null
+}

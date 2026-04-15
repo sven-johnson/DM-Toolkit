@@ -46,6 +46,7 @@ interface Props {
   onEditCheck: (check: Check) => void
   wikiArticles?: WikiArticleRef[]
   onWikiLinkClick?: (articleId: number, title: string) => void
+  campaignId?: number
 }
 
 export function SceneCard({
@@ -59,6 +60,7 @@ export function SceneCard({
   onEditCheck,
   wikiArticles,
   onWikiLinkClick,
+  campaignId,
 }: Props) {
   const [collapsed, setCollapsed] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
@@ -275,6 +277,7 @@ export function SceneCard({
             }
             wikiArticles={wikiArticles}
             onWikiLinkClick={onWikiLinkClick}
+            campaignId={campaignId}
           />
 
           <DmNotesEditor

@@ -1,7 +1,10 @@
+import os
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .auth import router as auth_router
+from .auth import router as auth_router, seed_initial_user
 from .routers import scenes
 from .routers.campaigns import router as campaigns_router
 from .routers.characters import router as characters_router
@@ -11,11 +14,30 @@ from .routers.sessions import router as sessions_router
 from .routers.storylines import router as storylines_router
 from .routers.wiki import router as wiki_router
 
-app = FastAPI(title="DM Toolkit API", version="0.2.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    seed_initial_user()
+    yield
+
+
+app = FastAPI(title="DM Toolkit API", version="0.2.0", lifespan=lifespan)
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
+allowed_origins = ["http://localhost:5173", "http://localhost:8000"]
+
+frontend_url = os.environ.get("FRONTEND_URL")
+if frontend_url:
+    allowed_origins.append(frontend_url)
+else:
+    print("WARNING: FRONTEND_URL not set — production CORS will only allow localhost origins")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

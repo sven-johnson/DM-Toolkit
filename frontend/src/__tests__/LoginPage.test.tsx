@@ -5,6 +5,7 @@ import { http, HttpResponse } from "msw";
 import { vi } from "vitest";
 import { LoginPage } from "../pages/LoginPage";
 import { server } from "../test/server";
+import { BASE } from "../test/handlers";
 
 // Mock useNavigate so we can assert navigation without a real router
 const mockNavigate = vi.fn();
@@ -112,7 +113,7 @@ test("does not store a token on failed login", async () => {
 test("clears previous error on a new successful attempt", async () => {
   // Override to fail first, then succeed
   server.use(
-    http.post("http://localhost:8000/auth/login", async ({ request }) => {
+    http.post(`${BASE}/auth/login`, async ({ request }) => {
       const body = (await request.json()) as { username: string; password: string };
       if (body.password === "changeme") {
         return HttpResponse.json({
@@ -153,7 +154,7 @@ test("clears previous error on a new successful attempt", async () => {
 test("disables the button and shows loading text while submitting", async () => {
   // Use a handler that never resolves so we can observe the loading state
   server.use(
-    http.post("http://localhost:8000/auth/login", () => {
+    http.post(`${BASE}/auth/login`, () => {
       return new Promise(() => {
         // intentionally never resolves
       });
