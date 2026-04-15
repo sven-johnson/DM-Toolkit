@@ -203,6 +203,43 @@ alembic upgrade head
 
 ---
 
+## Railway Deployment (Backend)
+
+- Backend URL: https://dm-toolkit-production.up.railway.app
+- Deploys automatically on push to main branch
+- Root directory is set to `/backend` in Railway dashboard
+- Migrations run automatically via `start.sh` on each deploy
+- Environment variables set in Railway dashboard:
+  - `FRONTEND_URL=https://dm-toolkit.vercel.app`
+  - `INITIAL_USERNAME`, `INITIAL_PASSWORD`, `SECRET_KEY` (set manually)
+  - `DATABASE_URL` injected automatically by Railway MySQL plugin
+
+---
+
+## Vercel Deployment (Frontend)
+
+- Frontend URL: https://dm-toolkit.vercel.app
+- Deploys automatically on push to main branch
+- Root directory is set to `/frontend` in Vercel dashboard
+- Environment variable set in Vercel dashboard:
+  - `VITE_API_URL=https://dm-toolkit-production.up.railway.app`
+- Build command: `npm run build`
+- Output directory: `dist`
+
+---
+
+## Local Development
+
+- Prerequisites: Docker Desktop, Node 18+, Python 3.11+
+- Copy `backend/.env.example` to `backend/.env` and fill in values
+- Copy `frontend/.env.example` to `frontend/.env`
+- Start MySQL: `docker compose up -d`
+- Start backend: `cd backend && uvicorn app.main:app --reload --port 8000`
+- Start frontend: `cd frontend && npm run dev`
+- Run migrations: `cd backend && alembic upgrade head`
+
+---
+
 ## Accessing from other devices (e.g. tablet at the table)
 
 1. Make sure your machine's firewall allows inbound connections on ports `8000` and `5173`.
