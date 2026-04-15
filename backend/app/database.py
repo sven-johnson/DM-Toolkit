@@ -16,6 +16,13 @@ _engine = None
 _SessionLocal = None
 
 
+def _normalize_url(url: str) -> str:
+    """Ensure MySQL URLs use the pymysql driver, not the missing MySQLdb driver."""
+    if url.startswith("mysql://"):
+        url = url.replace("mysql://", "mysql+pymysql://", 1)
+    return url
+
+
 def _get_engine():
     global _engine, _SessionLocal
     if _engine is None:
@@ -25,6 +32,7 @@ def _get_engine():
                 "DATABASE_URL environment variable is not set. "
                 "Copy backend/.env.example to backend/.env and fill in values."
             )
+        url = _normalize_url(url)
         connect_args = {}
         if "railway" in url:
             connect_args = {"ssl": {"ssl_mode": "VERIFY_IDENTITY"}}

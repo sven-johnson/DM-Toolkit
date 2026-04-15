@@ -13,8 +13,12 @@ from app.models import Scene, Session  # noqa: E402, F401
 
 config = context.config
 
-# Override sqlalchemy.url from environment so alembic.ini doesn't need credentials
-config.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"])
+# Override sqlalchemy.url from environment so alembic.ini doesn't need credentials.
+# Normalize mysql:// → mysql+pymysql:// since MySQLdb is not installed.
+_db_url = os.environ["DATABASE_URL"]
+if _db_url.startswith("mysql://"):
+    _db_url = _db_url.replace("mysql://", "mysql+pymysql://", 1)
+config.set_main_option("sqlalchemy.url", _db_url)
 
 target_metadata = Base.metadata
 
