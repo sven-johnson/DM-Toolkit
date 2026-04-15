@@ -77,7 +77,7 @@ def upgrade() -> None:
     op.execute("UPDATE sessions SET campaign_id = 1")
     op.execute("UPDATE sessions SET active_storyline_id = 1")
 
-    op.alter_column("sessions", "campaign_id", nullable=False)
+    op.alter_column("sessions", "campaign_id", existing_type=sa.Integer(), nullable=False)
     op.create_foreign_key(
         "fk_sessions_campaign", "sessions", "campaigns", ["campaign_id"], ["id"],
         ondelete="CASCADE",
@@ -106,7 +106,7 @@ def upgrade() -> None:
         op.execute(f"UPDATE scenes SET uuid = '{uuid_lib.uuid4()}' WHERE id = {scid}")
 
     op.execute("UPDATE scenes SET storyline_id = 1")
-    op.alter_column("scenes", "storyline_id", nullable=False)
+    op.alter_column("scenes", "storyline_id", existing_type=sa.Integer(), nullable=False)
     op.create_foreign_key(
         "fk_scenes_storyline", "scenes", "storylines", ["storyline_id"], ["id"],
         ondelete="CASCADE",
@@ -155,7 +155,7 @@ def upgrade() -> None:
     # ------------------------------------------------------------------
     op.add_column("characters", sa.Column("campaign_id", sa.Integer(), nullable=True))
     op.execute("UPDATE characters SET campaign_id = 1")
-    op.alter_column("characters", "campaign_id", nullable=False)
+    op.alter_column("characters", "campaign_id", existing_type=sa.Integer(), nullable=False)
     op.create_foreign_key(
         "fk_characters_campaign", "characters", "campaigns", ["campaign_id"], ["id"],
         ondelete="CASCADE",
