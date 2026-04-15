@@ -1,10 +1,7 @@
-[build]
-builder = "nixpacks"
 
 [deploy]
 startCommand = "bash start.sh"
-restartPolicyType = "on-failure"
-restartPolicyMaxRetries = 3
+
 
 [[deploy.healthcheck]]
 path = "/health"
