@@ -97,7 +97,7 @@ export function useReorderStorylineScenes(campaignId: number, storylineId: numbe
 // queryKey is passed in so each view invalidates its own cache
 export function useUpdateScene(queryKey: unknown[]) {
   const queryClient = useQueryClient()
-  return useMutation<Scene, Error, { id: number; title?: string; body?: string; dm_notes?: string; scene_type?: string; puzzle_clues?: string | null; puzzle_solution?: string | null }>({
+  return useMutation<Scene, Error, { id: number; title?: string; body?: string; dm_notes?: string | null; scene_type?: string; puzzle_clues?: string | null; puzzle_solution?: string | null }>({
     mutationFn: async ({ id, ...body }) => {
       const { data } = await apiClient.put<Scene>(`/scenes/${id}`, body)
       return data

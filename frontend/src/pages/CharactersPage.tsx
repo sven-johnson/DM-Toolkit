@@ -290,8 +290,8 @@ function CharacterManagerCard({
                 <div className="char-section-title">Ability Scores</div>
                 <div className="char-stat-list">
                   {ABILITIES.map((a) => {
-                    const score = (character as Record<string, number>)[a.scoreField]
-                    const mod = (character as Record<string, number>)[a.modField]
+                    const score = (character as unknown as Record<string, number>)[a.scoreField]
+                    const mod = (character as unknown as Record<string, number>)[a.modField]
                     return (
                       <div key={a.key} className="char-stat-row">
                         <span className="char-stat-label">{a.key.toUpperCase()}</span>
@@ -324,7 +324,7 @@ function CharacterManagerCard({
                     <div key={s.key} className="char-stat-row">
                       <span className="char-stat-label">{s.name}</span>
                       <InlineNumberEdit
-                        value={(character as Record<string, number>)[s.key]}
+                        value={(character as unknown as Record<string, number>)[s.key]}
                         onCommit={(v) => onUpdate({ [s.key]: v } as Partial<Character>)}
                         formatDisplay={formatModifier}
                       />
@@ -343,7 +343,7 @@ function CharacterManagerCard({
                     <div key={s.key} className="char-stat-row">
                       <span className="char-stat-label">{s.name}</span>
                       <InlineNumberEdit
-                        value={(character as Record<string, number>)[s.key]}
+                        value={(character as unknown as Record<string, number>)[s.key]}
                         onCommit={(v) => onUpdate({ [s.key]: v } as Partial<Character>)}
                         formatDisplay={formatModifier}
                       />

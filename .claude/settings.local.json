@@ -6,7 +6,8 @@
       "Bash(python -m alembic history)",
       "Bash(pip show:*)",
       "Bash(alembic upgrade:*)",
-      "Bash(python -c ':*)"
+      "Bash(python -c ':*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

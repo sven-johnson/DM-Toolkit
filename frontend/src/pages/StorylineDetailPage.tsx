@@ -13,7 +13,7 @@ import { useCreateCheck } from '../hooks/useChecks'
 import { SceneList } from '../components/SceneList'
 import { WikiArticleModal } from '../components/WikiArticleModal'
 import { useWikiArticles } from '../hooks/useWiki'
-import type { Check, Scene } from '../types'
+import type { Check } from '../types'
 import { useUpdateCheck } from '../hooks/useChecks'
 import { calcSuccessPercent, formatModifier, getCheckModifier, SAVES, SKILLS } from '../constants/dnd'
 

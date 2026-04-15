@@ -48,9 +48,9 @@ export function calcModifier(score: number): number {
 
 export function getCheckModifier(character: Character, checkType: string, subtype: string): number {
   if (checkType === 'skill') {
-    return (character as Record<string, number>)[subtype] ?? 0
+    return (character as unknown as Record<string, number>)[subtype] ?? 0
   }
-  return (character as Record<string, number>)[subtype] ?? 0
+  return (character as unknown as Record<string, number>)[subtype] ?? 0
 }
 
 export function calcSuccessPercent(modifier: number, dc: number): number {

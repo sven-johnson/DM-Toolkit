@@ -61,8 +61,8 @@ export function CharacterModal({ character, onClose }: Props) {
                 <div key={a.key} className="modal-stat-row">
                   <span>{a.key.toUpperCase()}</span>
                   <strong>
-                    {(character as Record<string, number>)[a.scoreField]}{' '}
-                    ({formatModifier((character as Record<string, number>)[a.modField])})
+                    {(character as unknown as Record<string, number>)[a.scoreField]}{' '}
+                    ({formatModifier((character as unknown as Record<string, number>)[a.modField])})
                   </strong>
                 </div>
               ))}
@@ -73,7 +73,7 @@ export function CharacterModal({ character, onClose }: Props) {
               {SAVES.map((s) => (
                 <div key={s.key} className="modal-stat-row">
                   <span>{s.name}</span>
-                  <strong>{formatModifier((character as Record<string, number>)[s.key])}</strong>
+                  <strong>{formatModifier((character as unknown as Record<string, number>)[s.key])}</strong>
                 </div>
               ))}
             </div>
@@ -86,7 +86,7 @@ export function CharacterModal({ character, onClose }: Props) {
               {SKILLS.map((s) => (
                 <div key={s.key} className="modal-stat-row">
                   <span>{s.name}</span>
-                  <strong>{formatModifier((character as Record<string, number>)[s.key])}</strong>
+                  <strong>{formatModifier((character as unknown as Record<string, number>)[s.key])}</strong>
                 </div>
               ))}
             </div>

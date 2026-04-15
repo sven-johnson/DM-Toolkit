@@ -125,7 +125,7 @@ const SlashCommandList = forwardRef<SlashCommandListHandle, SlashCommandListProp
       <div className="slash-menu">
         {items.slice(0, 20).map((item, index) => (
           <button
-            key={item.type === 'wiki' ? `wiki-${item.articleId}` : `${item.type}-${item.subtype}`}
+            key={item.type === 'wiki' ? `wiki-${item.articleId}` : 'subtype' in item ? `${item.type}-${item.subtype}` : item.type}
             className={`slash-menu-item${index === selectedIndex ? ' selected' : ''}`}
             onMouseDown={(e) => {
               e.preventDefault()
@@ -330,7 +330,7 @@ export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles =
     extensions,
     content: content || '',
     onUpdate({ editor: ed }) {
-      const md: string = (ed.storage.markdown as { getMarkdown: () => string }).getMarkdown()
+      const md: string = ((ed.storage as unknown as Record<string, unknown>)['markdown'] as { getMarkdown: () => string }).getMarkdown()
       handleDebouncedSave(md)
     },
     onFocus() { setIsFocused(true) },
@@ -339,7 +339,7 @@ export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles =
 
   useEffect(() => {
     if (!editor) return
-    const currentMd: string = (editor.storage.markdown as { getMarkdown: () => string }).getMarkdown()
+    const currentMd: string = ((editor.storage as unknown as Record<string, unknown>)['markdown'] as { getMarkdown: () => string }).getMarkdown()
     if (content !== currentMd) {
       editor.commands.setContent(content || '')
     }

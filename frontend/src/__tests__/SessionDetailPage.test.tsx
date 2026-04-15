@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { SessionDetailPage } from '../pages/SessionDetailPage'
 import { server } from '../test/server'
-import { BASE, fixtureSession, fixtureCharacter, fixtureCheck, fixtureScene } from '../test/handlers'
+import { BASE, fixtureSession, fixtureCheck, fixtureScene } from '../test/handlers'
 
 // ---------------------------------------------------------------------------
 // Mock SceneEditor — Tiptap / ProseMirror cannot run in jsdom

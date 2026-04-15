@@ -23,7 +23,7 @@ export function RollHistoryPage() {
   const charMap = new Map<number, Character>(characters.map((c) => [c.id, c]))
 
   // Group by session
-  const sessionGroups = new Map<number, { title: string; rolls: RollHistoryItem[] }>()
+  const sessionGroups = new Map<number | null, { title: string | null; rolls: RollHistoryItem[] }>()
   for (const roll of history) {
     if (!sessionGroups.has(roll.session_id)) {
       sessionGroups.set(roll.session_id, { title: roll.session_title, rolls: [] })
@@ -86,7 +86,7 @@ export function RollHistoryPage() {
                         const char = charMap.get(roll.character_id)
                         const charName = char?.name || `Character #${roll.character_id}`
                         const modifier = char
-                          ? ((char as Record<string, number>)[roll.subtype] ?? 0)
+                          ? ((char as unknown as Record<string, number>)[roll.subtype] ?? 0)
                           : 0
                         const total = roll.die_result + modifier
                         const passed = total >= roll.dc

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import apiClient from '../api/client'
 import type { Character } from '../types'
 
-export function useCharacters(campaignId: number) {
+export function useCharacters(campaignId?: number) {
   return useQuery<Character[]>({
     queryKey: ['campaigns', campaignId, 'characters'],
     queryFn: async () => {
