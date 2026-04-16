@@ -27,7 +27,13 @@ app = FastAPI(title="DM Toolkit API", version="0.2.0", lifespan=lifespan)
 def health_check():
     return {"status": "ok"}
 
-allowed_origins = ["http://localhost:5173", "http://localhost:8000"]
+allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+]
 
 frontend_url = os.environ.get("FRONTEND_URL")
 if frontend_url:
