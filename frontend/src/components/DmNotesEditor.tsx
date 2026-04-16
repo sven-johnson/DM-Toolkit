@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 interface Props {
   value: string
@@ -7,6 +7,18 @@ interface Props {
 
 export function DmNotesEditor({ value, onSave }: Props) {
   const [open, setOpen] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  function autoResize(el: HTMLTextAreaElement) {
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }
+
+  useEffect(() => {
+    if (open && textareaRef.current) {
+      autoResize(textareaRef.current)
+    }
+  }, [open, value])
 
   return (
     <div className="dm-notes">
@@ -19,10 +31,12 @@ export function DmNotesEditor({ value, onSave }: Props) {
       </button>
       {open && (
         <textarea
+          ref={textareaRef}
           className="dm-notes-input"
           defaultValue={value}
           placeholder="Private DM notes…"
-          rows={3}
+          rows={1}
+          onInput={(e) => autoResize(e.currentTarget)}
           onBlur={(e) => {
             const val = e.target.value
             if (val !== value) onSave(val)
