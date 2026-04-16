@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import {
   exportStoryline,
   useImportStorylines,
@@ -198,10 +198,7 @@ export function StorylineDetailPage() {
   return (
     <div className="page">
       <div className="page-header">
-        <Link to={`/campaigns/${campaignId}/storylines`} className="back-link">
-          ← Storylines
-        </Link>
-        <div className="session-meta">
+<div className="session-meta">
           {editingTitle ? (
             <input
               className="input"

@@ -166,10 +166,7 @@ export function SessionDetailPage() {
   return (
     <div className="page">
       <div className="page-header">
-        <Link to={`/campaigns/${campaignId}/sessions`} className="back-link">
-          ← Sessions
-        </Link>
-        <div className="session-meta">
+<div className="session-meta">
           {editingTitle ? (
             <input
               className="input"
@@ -195,88 +192,6 @@ export function SessionDetailPage() {
         </div>
       </div>
 
-      {/* Active storyline bar */}
-      <div className="session-storyline-bar">
-        <span className="session-storyline-label">
-          {activeStoryline ? (
-            <>
-              <span className="storyline-indicator">📖</span>
-              <Link to={`/campaigns/${campaignId}/storylines/${activeStoryline.id}`}>
-                {activeStoryline.title}
-              </Link>
-            </>
-          ) : (
-            <span className="text-muted">No active storyline</span>
-          )}
-        </span>
-        <button
-          className="btn-ghost btn-sm"
-          onClick={() => setShowStorylineSelector((s) => !s)}
-          type="button"
-        >
-          Change Storyline
-        </button>
-      </div>
-
-      {showStorylineSelector && (
-        <div className="storyline-selector-row">
-          <select
-            className="input"
-            defaultValue={session.active_storyline_id ?? ''}
-            onChange={(e) => {
-              const val = e.target.value === '' ? null : Number(e.target.value)
-              updateSession.mutate({ active_storyline_id: val })
-              setShowStorylineSelector(false)
-            }}
-          >
-            <option value="">No storyline</option>
-            {storylines.map((sl) => (
-              <option key={sl.id} value={sl.id}>
-                {sl.title}
-              </option>
-            ))}
-          </select>
-          <button
-            className="btn-ghost btn-sm"
-            onClick={() => setShowStorylineSelector(false)}
-            type="button"
-          >
-            Cancel
-          </button>
-        </div>
-      )}
-
-      {/* Recap notes */}
-      <div className="session-recap">
-        <div
-          className="session-recap-label"
-          onClick={() => {
-            setRecapDraft(session.recap_notes ?? '')
-            setEditingRecap(true)
-          }}
-        >
-          Recap Notes
-        </div>
-        {editingRecap ? (
-          <textarea
-            className="session-recap-input"
-            value={recapDraft}
-            onChange={(e) => setRecapDraft(e.target.value)}
-            onBlur={commitRecap}
-            rows={3}
-            autoFocus
-            placeholder="Session recap…"
-          />
-        ) : (
-          <div
-            className="session-recap-text"
-            onClick={() => { setRecapDraft(session.recap_notes ?? ''); setEditingRecap(true) }}
-          >
-            {session.recap_notes || <span className="text-muted">Click to add recap notes…</span>}
-          </div>
-        )}
-      </div>
-
       <div className="session-layout">
         <div className="session-main">
           {session.scenes.length === 0 && (
@@ -297,6 +212,57 @@ export function SessionDetailPage() {
             onWikiLinkClick={(id) => setWikiModalId(id)}
             campaignId={campaignId}
           />
+
+          {/* Active storyline bar */}
+          <div className="session-storyline-bar">
+            <span className="session-storyline-label">
+              {activeStoryline ? (
+                <>
+                  <span className="storyline-indicator">📖</span>
+                  <Link to={`/campaigns/${campaignId}/storylines/${activeStoryline.id}`}>
+                    {activeStoryline.title}
+                  </Link>
+                </>
+              ) : (
+                <span className="text-muted">No active storyline</span>
+              )}
+            </span>
+            <button
+              className="btn-ghost btn-sm"
+              onClick={() => setShowStorylineSelector((s) => !s)}
+              type="button"
+            >
+              Change Storyline
+            </button>
+          </div>
+
+          {showStorylineSelector && (
+            <div className="storyline-selector-row">
+              <select
+                className="input"
+                defaultValue={session.active_storyline_id ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value === '' ? null : Number(e.target.value)
+                  updateSession.mutate({ active_storyline_id: val })
+                  setShowStorylineSelector(false)
+                }}
+              >
+                <option value="">No storyline</option>
+                {storylines.map((sl) => (
+                  <option key={sl.id} value={sl.id}>
+                    {sl.title}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="btn-ghost btn-sm"
+                onClick={() => setShowStorylineSelector(false)}
+                type="button"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
 
           {/* Add Next Scene button */}
           <div className="add-next-scene-row">
@@ -337,6 +303,37 @@ export function SessionDetailPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Recap notes */}
+      <div className="session-recap">
+        <div
+          className="session-recap-label"
+          onClick={() => {
+            setRecapDraft(session.recap_notes ?? '')
+            setEditingRecap(true)
+          }}
+        >
+          Recap Notes
+        </div>
+        {editingRecap ? (
+          <textarea
+            className="session-recap-input"
+            value={recapDraft}
+            onChange={(e) => setRecapDraft(e.target.value)}
+            onBlur={commitRecap}
+            rows={3}
+            autoFocus
+            placeholder="Session recap…"
+          />
+        ) : (
+          <div
+            className="session-recap-text"
+            onClick={() => { setRecapDraft(session.recap_notes ?? ''); setEditingRecap(true) }}
+          >
+            {session.recap_notes || <span className="text-muted">Click to add recap notes…</span>}
+          </div>
+        )}
       </div>
 
       {pendingCheck && (
