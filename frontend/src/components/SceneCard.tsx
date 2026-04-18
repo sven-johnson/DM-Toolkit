@@ -27,6 +27,7 @@ interface ScenePatch {
   scene_type?: string
   puzzle_clues?: string | null
   puzzle_solution?: string | null
+  music_cue?: string | null
 }
 
 interface WikiArticleRef {
@@ -65,7 +66,7 @@ export function SceneCard({
   const [collapsed, setCollapsed] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState(scene.title)
-  const [musicCue, setMusicCue] = useState('')
+  const [musicCue, setMusicCue] = useState(scene.music_cue ?? '')
   const [editingCue, setEditingCue] = useState(false)
   const [newEnemyName, setNewEnemyName] = useState('')
   const [newEnemyQty, setNewEnemyQty] = useState('1')
@@ -216,6 +217,7 @@ export function SceneCard({
                   const val = (e.target as HTMLInputElement).value.trim()
                   setMusicCue(val)
                   setEditingCue(false)
+                  onUpdate(scene.id, { music_cue: val || null })
                 }
                 if (e.key === 'Escape' && editingCue) {
                   setEditingCue(false)
@@ -225,6 +227,7 @@ export function SceneCard({
                 const val = e.target.value.trim()
                 setMusicCue(val)
                 setEditingCue(false)
+                onUpdate(scene.id, { music_cue: val || null })
               }}
             />
           ) : (

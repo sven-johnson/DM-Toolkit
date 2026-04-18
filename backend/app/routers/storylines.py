@@ -59,6 +59,7 @@ def _storyline_to_export(storyline: Storyline) -> StorylineExportItem:
                 scene_type=scene.scene_type,
                 puzzle_clues=scene.puzzle_clues,
                 puzzle_solution=scene.puzzle_solution,
+                music_cue=scene.music_cue,
                 enemies=[
                     StorylineExportEnemy(name=e.name, quantity=e.quantity)
                     for e in sorted(scene.enemies, key=lambda e: e.order_index)
@@ -190,6 +191,7 @@ def import_storylines(
                         scene.scene_type = imp_sc.scene_type
                         scene.puzzle_clues = imp_sc.puzzle_clues
                         scene.puzzle_solution = imp_sc.puzzle_solution
+                        scene.music_cue = imp_sc.music_cue
                         scene.order_index = idx
                         db.flush()
                         # Replace enemies and shop_items
@@ -209,6 +211,7 @@ def import_storylines(
                             scene_type=imp_sc.scene_type,
                             puzzle_clues=imp_sc.puzzle_clues,
                             puzzle_solution=imp_sc.puzzle_solution,
+                            music_cue=imp_sc.music_cue,
                             order_index=idx,
                         )
                         db.add(scene)

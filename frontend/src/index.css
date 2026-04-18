@@ -1942,7 +1942,10 @@ input.scene-title-input {
 
 /* --- Article detail --- */
 
-.wiki-article { max-width: 860px; }
+.wiki-article {
+  max-width: 100%;
+  display: flow-root; /* contains floated children */
+}
 
 .wiki-article-header {
   display: flex;
@@ -1960,13 +1963,56 @@ input.scene-title-input {
   flex: 1;
 }
 
-.wiki-article-image {
+.wiki-details-col {
+  float: right;
+  width: 210px;
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.wiki-details-col .wiki-assoc-panel { margin-bottom: 0; }
+
+.wiki-details-col .wiki-assoc-chips {
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.wiki-details-col .wiki-tag-list { margin-bottom: 0; }
+
+.wiki-article-image-thumb {
   width: 100%;
-  max-height: 300px;
+  height: 180px;
   object-fit: cover;
   border-radius: var(--radius);
-  margin-bottom: 1rem;
   display: block;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.wiki-article-image-thumb:hover { opacity: 0.85; }
+
+.wiki-image-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  cursor: pointer;
+}
+.wiki-image-modal-img {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: var(--radius);
+  cursor: default;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
 }
 
 .wiki-stub-banner {
@@ -2038,7 +2084,7 @@ input.scene-title-input {
   border: 1px solid var(--border);
 }
 
-.wiki-section { margin-bottom: 1.25rem; }
+.wiki-section { margin-bottom: 1.25rem; overflow: hidden; }
 
 .wiki-section-title {
   font-size: 0.7rem;
@@ -2054,6 +2100,7 @@ input.scene-title-input {
   background: rgba(200, 130, 30, 0.06);
   border-radius: var(--radius);
   padding: 0.75rem 1rem;
+  overflow: hidden;
 }
 
 .wiki-private-label {
@@ -2192,12 +2239,25 @@ input.scene-title-input {
   max-height: 80vh;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
 }
 
 .wiki-modal-body {
   overflow-y: auto;
+  overflow-x: hidden;
   flex: 1;
   padding-top: 0.75rem;
+  display: flow-root; /* contains floated details column */
+  min-width: 0;
+  word-break: break-word;
+}
+
+.wiki-details-col--modal {
+  width: 150px;
+}
+
+.wiki-details-col--modal .wiki-article-image-thumb {
+  height: 130px;
 }
 
 /* ============================================================
@@ -2436,4 +2496,57 @@ input.scene-title-input {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
+}
+
+/* ── Name Generator Modal ─────────────────────────────────── */
+
+.name-generator-modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 90vw;
+  max-width: 560px;
+}
+
+.name-generator-body {
+  padding: 1rem 1.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.name-generator-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.name-generator-select {
+  flex-shrink: 0;
+  background: var(--bg-input, var(--bg-card));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.875rem;
+  padding: 0.35rem 0.5rem;
+}
+
+.name-generator-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-input, var(--bg-card));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.95rem;
+  padding: 0.35rem 0.6rem;
+}
+
+.name-generator-input:disabled {
+  opacity: 0.6;
+}
+
+.name-generator-actions {
+  display: flex;
+  gap: 0.5rem;
 }

@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .auth import router as auth_router, seed_initial_user
 from .routers import scenes
 from .routers.campaigns import router as campaigns_router
+from .routers.names import router as names_router
 from .routers.characters import router as characters_router
 from .routers.checks import router as checks_router
 from .routers.rolls import router as rolls_router
@@ -62,3 +63,4 @@ app.include_router(characters_router, prefix="/characters", tags=["characters"])
 app.include_router(checks_router, tags=["checks"])
 app.include_router(rolls_router, tags=["rolls"])
 app.include_router(wiki_router, prefix="/wiki", tags=["wiki"])
+app.include_router(names_router, prefix="/names", tags=["names"])

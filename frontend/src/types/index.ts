@@ -70,6 +70,7 @@ export interface Scene {
   scene_type: SceneType
   puzzle_clues: string | null
   puzzle_solution: string | null
+  music_cue: string | null
   order_index: number
   created_at: string
   updated_at: string

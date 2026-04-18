@@ -73,60 +73,65 @@ export function WikiArticleModal({ articleId, campaignId, onClose, onNavigate }:
               </div>
             )}
 
-            {article.image_url && (
-              <img
-                src={article.image_url}
-                alt={article.title}
-                className="wiki-article-image"
-                style={{ marginBottom: '0.75rem' }}
-                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
-              />
-            )}
+            {/* Right details column */}
+            {(article.image_url || article.associations.length > 0 || (article.tags && article.tags.length > 0)) && (
+              <div className="wiki-details-col wiki-details-col--modal">
+                {article.image_url && (
+                  <img
+                    src={article.image_url}
+                    alt={article.title}
+                    className="wiki-article-image-thumb"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+                  />
+                )}
 
-            {article.associations.length > 0 && (
-              <div className="wiki-assoc-panel" style={{ marginBottom: '0.75rem' }}>
-                <div className="wiki-assoc-panel-title">Associations</div>
-                <div className="wiki-assoc-chips">
-                  {article.associations.map((assoc) => (
-                    <button
-                      key={assoc.id}
-                      className="wiki-assoc-chip"
-                      type="button"
-                      style={{ cursor: 'pointer', textAlign: 'left' }}
-                      onClick={() => onNavigate?.(assoc.other_article_id)}
-                    >
-                      <span className="wiki-assoc-chip-title">
-                        {assoc.other_article_title}
-                        <span
-                          style={{
-                            marginLeft: '0.35rem',
-                            fontSize: '0.65rem',
-                            color: CATEGORY_COLORS[assoc.other_article_category as WikiCategory] ?? '#888',
-                            textTransform: 'uppercase',
-                            fontWeight: 600,
-                            letterSpacing: '0.05em',
-                          }}
+                {article.associations.length > 0 && (
+                  <div className="wiki-assoc-panel">
+                    <div className="wiki-assoc-panel-title">Associations</div>
+                    <div className="wiki-assoc-chips">
+                      {article.associations.map((assoc) => (
+                        <button
+                          key={assoc.id}
+                          className="wiki-assoc-chip"
+                          type="button"
+                          style={{ cursor: 'pointer', textAlign: 'left' }}
+                          onClick={() => onNavigate?.(assoc.other_article_id)}
                         >
-                          {CATEGORY_LABELS[assoc.other_article_category as WikiCategory] ?? assoc.other_article_category}
-                        </span>
-                      </span>
-                      <span className="wiki-assoc-chip-label">
-                        {assoc.direction === 'from' ? `→ ${assoc.association_label}` : `← ${assoc.association_label}`}
-                      </span>
-                    </button>
-                  ))}
-                </div>
+                          <span className="wiki-assoc-chip-title">
+                            {assoc.other_article_title}
+                            <span
+                              style={{
+                                marginLeft: '0.35rem',
+                                fontSize: '0.65rem',
+                                color: CATEGORY_COLORS[assoc.other_article_category as WikiCategory] ?? '#888',
+                                textTransform: 'uppercase',
+                                fontWeight: 600,
+                                letterSpacing: '0.05em',
+                              }}
+                            >
+                              {CATEGORY_LABELS[assoc.other_article_category as WikiCategory] ?? assoc.other_article_category}
+                            </span>
+                          </span>
+                          <span className="wiki-assoc-chip-label">
+                            {assoc.direction === 'from' ? `→ ${assoc.association_label}` : `← ${assoc.association_label}`}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {article.tags && article.tags.length > 0 && (
+                  <div className="wiki-tag-list">
+                    {article.tags.map((tag) => (
+                      <span key={tag} className="wiki-tag">{tag}</span>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
-            {article.tags && article.tags.length > 0 && (
-              <div className="wiki-tag-list" style={{ marginBottom: '0.75rem' }}>
-                {article.tags.map((tag) => (
-                  <span key={tag} className="wiki-tag">{tag}</span>
-                ))}
-              </div>
-            )}
-
+            {/* Main content */}
             {article.public_content && (
               <div className="wiki-section">
                 <div className="wiki-section-title">Public</div>

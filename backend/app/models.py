@@ -129,6 +129,7 @@ class Scene(Base):
     scene_type: Mapped[str] = mapped_column(String(20), nullable=False, default="story")
     puzzle_clues: Mapped[str | None] = mapped_column(Text, nullable=True)
     puzzle_solution: Mapped[str | None] = mapped_column(Text, nullable=True)
+    music_cue: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

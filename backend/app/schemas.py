@@ -303,6 +303,7 @@ class SceneUpdate(BaseModel):
     scene_type: Optional[str] = None
     puzzle_clues: Optional[str] = None
     puzzle_solution: Optional[str] = None
+    music_cue: Optional[str] = None
 
 
 class SceneOut(BaseModel):
@@ -315,6 +316,7 @@ class SceneOut(BaseModel):
     scene_type: str
     puzzle_clues: Optional[str]
     puzzle_solution: Optional[str]
+    music_cue: Optional[str]
     order_index: int
     created_at: datetime
     updated_at: datetime
@@ -611,6 +613,7 @@ class StorylineExportScene(BaseModel):
     scene_type: str
     puzzle_clues: Optional[str] = None
     puzzle_solution: Optional[str] = None
+    music_cue: Optional[str] = None
     enemies: list[StorylineExportEnemy] = []
     shop_items: list[StorylineExportShopItem] = []
 
@@ -634,6 +637,7 @@ class StorylineImportScene(BaseModel):
     scene_type: str = "story"
     puzzle_clues: Optional[str] = None
     puzzle_solution: Optional[str] = None
+    music_cue: Optional[str] = None
     enemies: list[StorylineExportEnemy] = []
     shop_items: list[StorylineExportShopItem] = []
 

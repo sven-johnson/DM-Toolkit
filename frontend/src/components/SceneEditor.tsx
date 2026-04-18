@@ -21,6 +21,7 @@ import { FormattingToolbar } from './FormattingToolbar'
 import { CheckLine } from './CheckLineExtension'
 import { createWikiLinkExtension } from './WikiLinkExtension'
 import { WikiExplorerModal } from './WikiExplorerModal'
+import { NameGeneratorModal } from './NameGeneratorModal'
 
 interface CheckSlashItem {
   type: 'skill' | 'save'
@@ -40,7 +41,12 @@ interface ExplorerSlashItem {
   label: string
 }
 
-type AnySlashItem = CheckSlashItem | WikiSlashItem | ExplorerSlashItem
+interface NameSlashItem {
+  type: 'name'
+  label: string
+}
+
+type AnySlashItem = CheckSlashItem | WikiSlashItem | ExplorerSlashItem | NameSlashItem
 
 // Public interface: only check items bubble up to the parent
 interface SlashItem {
@@ -135,6 +141,8 @@ const SlashCommandList = forwardRef<SlashCommandListHandle, SlashCommandListProp
           >
             {item.type === 'explorer'
               ? <><span className="slash-menu-wiki-icon">🔍</span> {item.label}</>
+              : item.type === 'name'
+              ? <><span className="slash-menu-wiki-icon">✨</span> {item.label}</>
               : item.type === 'wiki'
               ? <><span className="slash-menu-wiki-icon">📖</span> {item.label}</>
               : item.type === 'skill'
@@ -194,6 +202,10 @@ export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles =
   const campaignIdRef = useRef(campaignId)
   useEffect(() => { campaignIdRef.current = campaignId }, [campaignId])
 
+  const [nameModalOpen, setNameModalOpen] = useState(false)
+  const setNameModalOpenRef = useRef(setNameModalOpen)
+  const nameEditorRef = useRef<Editor | null>(null)
+
   const handleDebouncedSave = useCallback((md: string) => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => {
@@ -223,6 +235,12 @@ export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles =
               if (item.type === 'explorer') {
                 explorerEditorRef.current = ed
                 setExplorerOpenRef.current(true)
+                return
+              }
+
+              if (item.type === 'name') {
+                nameEditorRef.current = ed
+                setNameModalOpenRef.current(true)
                 return
               }
 
@@ -270,7 +288,11 @@ export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles =
                 (item) => fuzzyMatch(query, item.label) || fuzzyMatch(query, item.subtype),
               )
 
-              return [...explorerItems, ...wikiItems, ...checkItems]
+              const nameItems: NameSlashItem[] = fuzzyMatch(query, 'name')
+                ? [{ type: 'name', label: 'Name Generator' }]
+                : []
+
+              return [...explorerItems, ...nameItems, ...wikiItems, ...checkItems]
             },
             render() {
               return {
@@ -362,6 +384,21 @@ export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles =
     setExplorerOpen(false)
   }
 
+  function handleNameInsertText(text: string) {
+    if (nameEditorRef.current) {
+      nameEditorRef.current.chain().focus().insertContent(text).run()
+    }
+  }
+
+  function handleNameInsertWikiLink(articleId: number, title: string, category: string) {
+    if (nameEditorRef.current) {
+      nameEditorRef.current.chain().focus().insertContent({
+        type: 'wikiLink',
+        attrs: { articleId, articleTitle: title, articleCategory: category },
+      }).run()
+    }
+  }
+
   return (
     <div className="scene-editor">
       {editor && isFocused && <FormattingToolbar editor={editor} />}
@@ -391,6 +428,16 @@ export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles =
             campaignId={campaignIdRef.current}
             onSelect={handleExplorerSelect}
             onClose={() => setExplorerOpen(false)}
+          />,
+          document.body,
+        )}
+      {nameModalOpen && campaignIdRef.current > 0 &&
+        createPortal(
+          <NameGeneratorModal
+            campaignId={campaignIdRef.current}
+            onClose={() => setNameModalOpen(false)}
+            onInsertText={handleNameInsertText}
+            onInsertWikiLink={handleNameInsertWikiLink}
           />,
           document.body,
         )}
