@@ -11,7 +11,7 @@ import type { WikiArticle, WikiImportRequest } from '../types'
 interface WikiCategorySectionProps {
   category: WikiCategory
   articles: WikiArticle[]
-  campaignId: number
+  campaignId: string
   collapsed: boolean
   onToggle: () => void
 }
@@ -85,8 +85,7 @@ function WikiCategorySection({ category, articles, campaignId, collapsed, onTogg
 // ---------------------------------------------------------------------------
 
 export function WikiListPage() {
-  const { campaignId: campaignIdStr } = useParams<{ campaignId: string }>()
-  const campaignId = Number(campaignIdStr)
+  const { campaignId } = useParams<{ campaignId: string }>()
   const navigate = useNavigate()
 
   const [filterCategory, setFilterCategory] = useState('')
@@ -96,14 +95,14 @@ export function WikiListPage() {
   // Track which category sections are collapsed; default all expanded
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
 
-  const { data: articles = [] } = useWikiArticles(campaignId, {
+  const { data: articles = [] } = useWikiArticles(campaignId!, {
     category: filterCategory || undefined,
     tag: filterTag || undefined,
     q: filterQ || undefined,
     stubs: hideStubs ? false : undefined,
   })
 
-  const importWiki = useImportWiki(campaignId)
+  const importWiki = useImportWiki(campaignId!)
   const [importResult, setImportResult] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -127,7 +126,7 @@ export function WikiListPage() {
     try {
       const text = await file.text()
       const json = JSON.parse(text) as WikiImportRequest
-      json.campaign_id = campaignId
+      json.campaign_id = campaignId!
       importWiki.mutate(json, {
         onSuccess: (result) => {
           const parts = [`Created: ${result.created}`, `Updated: ${result.updated}`]
@@ -148,7 +147,7 @@ export function WikiListPage() {
   async function handleExportAll() {
     setExporting(true)
     try {
-      await exportWikiAll(campaignId)
+      await exportWikiAll(campaignId!)
     } finally {
       setExporting(false)
     }
@@ -261,7 +260,7 @@ export function WikiListPage() {
             key={category}
             category={category}
             articles={catArticles}
-            campaignId={campaignId}
+            campaignId={campaignId!}
             collapsed={collapsedCategories.has(category)}
             onToggle={() => toggleCategory(category)}
           />

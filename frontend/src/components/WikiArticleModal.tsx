@@ -6,10 +6,10 @@ import { CATEGORY_COLORS, CATEGORY_LABELS, type WikiCategory } from '../constant
 import { useWikiArticle } from '../hooks/useWiki'
 
 interface Props {
-  articleId: number | null
-  campaignId: number
+  articleId: string | null
+  campaignId: string
   onClose: () => void
-  onNavigate?: (articleId: number) => void
+  onNavigate?: (articleId: string) => void
 }
 
 export function WikiArticleModal({ articleId, campaignId, onClose, onNavigate }: Props) {

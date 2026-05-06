@@ -5,17 +5,16 @@ import { useCampaignStorylines } from '../hooks/useCampaigns'
 
 export function SessionsPage() {
   const navigate = useNavigate()
-  const { campaignId: campaignIdStr } = useParams<{ campaignId: string }>()
-  const campaignId = Number(campaignIdStr)
+  const { campaignId } = useParams<{ campaignId: string }>()
 
-  const { data: sessions, isLoading, isError } = useSessions(campaignId)
-  const { data: storylines = [] } = useCampaignStorylines(campaignId)
-  const createSession = useCreateSession(campaignId)
-  const deleteSession = useDeleteSession(campaignId)
+  const { data: sessions, isLoading, isError } = useSessions(campaignId!)
+  const { data: storylines = [] } = useCampaignStorylines(campaignId!)
+  const createSession = useCreateSession(campaignId!)
+  const deleteSession = useDeleteSession(campaignId!)
 
   const [creating, setCreating] = useState(false)
   const [newTitle, setNewTitle] = useState('')
-  const [selectedStorylineId, setSelectedStorylineId] = useState<number | ''>('')
+  const [selectedStorylineId, setSelectedStorylineId] = useState<string | ''>('')
 
   function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -58,7 +57,7 @@ export function SessionsPage() {
             className="input"
             value={selectedStorylineId}
             onChange={(e) =>
-              setSelectedStorylineId(e.target.value === '' ? '' : Number(e.target.value))
+              setSelectedStorylineId(e.target.value)
             }
           >
             <option value="">No storyline</option>

@@ -3,19 +3,19 @@ import apiClient from '../api/client'
 import type { Check } from '../types'
 
 interface CreateCheckBody {
-  scene_id: number
+  scene_id: string
   check_type: string
   subtype: string
   dc: number
-  character_ids: number[]
+  character_ids: string[]
 }
 
 interface UpdateCheckBody {
-  id: number
+  id: string
   check_type?: string
   subtype?: string
   dc?: number
-  character_ids?: number[]
+  character_ids?: string[]
   order_index?: number
 }
 
@@ -50,7 +50,7 @@ export function useUpdateCheck(queryKey: unknown[]) {
 
 export function useDeleteCheck(queryKey: unknown[]) {
   const queryClient = useQueryClient()
-  return useMutation<void, Error, number>({
+  return useMutation<void, Error, string>({
     mutationFn: async (id) => {
       await apiClient.delete(`/checks/${id}`)
     },
@@ -62,7 +62,7 @@ export function useDeleteCheck(queryKey: unknown[]) {
 
 export function useReorderChecks(queryKey: unknown[]) {
   const queryClient = useQueryClient()
-  return useMutation<void, Error, { sceneId: number; checkIds: number[] }>({
+  return useMutation<void, Error, { sceneId: string; checkIds: string[] }>({
     mutationFn: async ({ sceneId, checkIds }) => {
       await apiClient.put(`/scenes/${sceneId}/checks/reorder`, {
         check_ids: checkIds,

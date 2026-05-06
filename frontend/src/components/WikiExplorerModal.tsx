@@ -6,8 +6,8 @@ import { useWikiSearch } from '../hooks/useWiki'
 import type { WikiArticle } from '../types'
 
 interface Props {
-  campaignId: number
-  onSelect: (id: number, title: string, category: string) => void
+  campaignId: string
+  onSelect: (id: string, title: string, category: string) => void
   onClose: () => void
 }
 

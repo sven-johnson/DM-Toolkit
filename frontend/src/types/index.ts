@@ -1,6 +1,5 @@
 export interface Campaign {
-  id: number
-  uuid: string
+  id: string
   name: string
   created_at: string
 }
@@ -10,9 +9,8 @@ export interface CampaignWithRelations extends Campaign {
 }
 
 export interface Storyline {
-  id: number
-  uuid: string
-  campaign_id: number
+  id: string
+  campaign_id: string
   title: string
   description: string | null
   order_index: number
@@ -24,13 +22,12 @@ export interface StorylineWithScenes extends Storyline {
 }
 
 export interface Session {
-  id: number
-  uuid: string
-  campaign_id: number
+  id: string
+  campaign_id: string
   title: string
   date: string | null
   recap_notes: string | null
-  active_storyline_id: number | null
+  active_storyline_id: string | null
   created_at: string
 }
 
@@ -41,8 +38,8 @@ export interface SessionWithScenes extends Session {
 export type SceneType = 'story' | 'puzzle' | 'combat' | 'shop'
 
 export interface SceneEnemy {
-  id: number
-  scene_id: number
+  id: string
+  scene_id: string
   name: string
   quantity: number
   order_index: number
@@ -51,8 +48,8 @@ export interface SceneEnemy {
 export type Currency = 'copper' | 'silver' | 'gold'
 
 export interface SceneShopItem {
-  id: number
-  scene_id: number
+  id: string
+  scene_id: string
   name: string
   description: string | null
   price: number
@@ -61,9 +58,8 @@ export interface SceneShopItem {
 }
 
 export interface Scene {
-  id: number
-  uuid: string
-  storyline_id: number
+  id: string
+  storyline_id: string
   title: string
   body: string
   dm_notes: string | null
@@ -80,26 +76,26 @@ export interface Scene {
 }
 
 export interface Roll {
-  id: number
-  check_id: number
-  character_id: number
+  id: string
+  check_id: string
+  character_id: string
   die_result: number
 }
 
 export interface Check {
-  id: number
-  scene_id: number
+  id: string
+  scene_id: string
   check_type: 'skill' | 'save'
   subtype: string
   dc: number
-  character_ids: number[]
+  character_ids: string[]
   order_index: number
   rolls: Roll[]
 }
 
 export interface Character {
-  id: number
-  campaign_id: number
+  id: string
+  campaign_id: string
   name: string
   char_class: string
   subclass: string
@@ -145,24 +141,24 @@ export interface Character {
 }
 
 export interface RollHistoryItem {
-  id: number
+  id: string
   die_result: number
-  character_id: number
-  check_id: number
+  character_id: string
+  check_id: string
   check_type: string
   subtype: string
   dc: number
-  character_ids: number[]
-  scene_id: number
+  character_ids: string[]
+  scene_id: string
   scene_title: string
-  session_id: number | null
+  session_id: string | null
   session_title: string | null
 }
 
 export interface SessionRollOut {
-  id: number
-  check_id: number
-  character_id: number
+  id: string
+  check_id: string
+  character_id: string
   die_result: number
   check_type: string
   subtype: string
@@ -175,8 +171,8 @@ export interface TokenResponse {
 }
 
 export interface WikiArticle {
-  id: number
-  campaign_id: number
+  id: string
+  campaign_id: string
   title: string
   category: string
   is_stub: boolean
@@ -189,9 +185,9 @@ export interface WikiArticle {
 }
 
 export interface WikiAssociationDisplay {
-  id: number
+  id: string
   association_label: string
-  other_article_id: number
+  other_article_id: string
   other_article_title: string
   other_article_category: string
   direction: 'from' | 'to'
@@ -208,13 +204,13 @@ export interface WikiAddAssociationRequest {
 }
 
 export interface WikiAddAssociationResult {
-  association_id: number
+  association_id: string
   stub_created: boolean
-  stub_article_id: number | null
+  stub_article_id: string | null
 }
 
 export interface WikiImportRequest {
-  campaign_id: number
+  campaign_id: string
   articles: WikiImportArticle[]
 }
 
@@ -242,8 +238,17 @@ export interface WikiImportResult {
   errors: string[]
 }
 
+export interface WikiSearchResult {
+  id: string
+  title: string
+  category: string
+  tags: string[] | null
+  is_stub: boolean
+  snippet: string | null
+}
+
 export interface WikiExportResponse {
-  campaign_id: number
+  campaign_id: string
   articles: WikiExportArticle[]
 }
 
@@ -262,15 +267,6 @@ export interface WikiExportAssociation {
   target_title: string
   target_category: string
   association_label: string
-}
-
-export interface WikiSearchResult {
-  id: number
-  title: string
-  category: string
-  tags: string[] | null
-  is_stub: boolean
-  snippet: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -307,12 +303,12 @@ export interface StorylineExportItem {
 }
 
 export interface StorylineExportResponse {
-  campaign_id: number
+  campaign_id: string
   storylines: StorylineExportItem[]
 }
 
 export interface StorylineImportRequest {
-  campaign_id: number
+  campaign_id: string
   storylines: StorylineExportItem[]
 }
 

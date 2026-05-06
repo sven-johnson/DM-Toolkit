@@ -1,3 +1,5 @@
+import uuid as uuid_lib
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session as DBSession
 
@@ -22,7 +24,7 @@ SCENE_TYPES = {"story", "puzzle", "combat", "shop"}
 
 @router.put("/{scene_id}", response_model=SceneOut)
 def update_scene(
-    scene_id: int,
+    scene_id: str,
     body: SceneUpdate,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
@@ -33,7 +35,6 @@ def update_scene(
 
     data = body.model_dump(exclude_none=True)
 
-    # When scene_type changes, clear non-applicable type-specific data
     new_type = data.get("scene_type")
     if new_type and new_type != scene.scene_type:
         if new_type not in SCENE_TYPES:
@@ -60,7 +61,7 @@ def update_scene(
 
 @router.delete("/{scene_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_scene(
-    scene_id: int,
+    scene_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> None:
@@ -82,7 +83,7 @@ def delete_scene(
     status_code=status.HTTP_201_CREATED,
 )
 def add_enemy(
-    scene_id: int,
+    scene_id: str,
     body: SceneEnemyCreate,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
@@ -91,7 +92,12 @@ def add_enemy(
     if not scene:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scene not found")
     order_index = db.query(SceneEnemy).filter(SceneEnemy.scene_id == scene_id).count()
-    enemy = SceneEnemy(scene_id=scene_id, order_index=order_index, **body.model_dump())
+    enemy = SceneEnemy(
+        id=str(uuid_lib.uuid4()),
+        scene_id=scene_id,
+        order_index=order_index,
+        **body.model_dump(),
+    )
     db.add(enemy)
     db.commit()
     db.refresh(enemy)
@@ -100,8 +106,8 @@ def add_enemy(
 
 @router.put("/{scene_id}/enemies/{enemy_id}", response_model=SceneEnemyOut)
 def update_enemy(
-    scene_id: int,
-    enemy_id: int,
+    scene_id: str,
+    enemy_id: str,
     body: SceneEnemyUpdate,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
@@ -122,8 +128,8 @@ def update_enemy(
 
 @router.delete("/{scene_id}/enemies/{enemy_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_enemy(
-    scene_id: int,
-    enemy_id: int,
+    scene_id: str,
+    enemy_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> None:
@@ -149,7 +155,7 @@ def delete_enemy(
     status_code=status.HTTP_201_CREATED,
 )
 def add_shop_item(
-    scene_id: int,
+    scene_id: str,
     body: SceneShopItemCreate,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
@@ -158,7 +164,12 @@ def add_shop_item(
     if not scene:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scene not found")
     order_index = db.query(SceneShopItem).filter(SceneShopItem.scene_id == scene_id).count()
-    item = SceneShopItem(scene_id=scene_id, order_index=order_index, **body.model_dump())
+    item = SceneShopItem(
+        id=str(uuid_lib.uuid4()),
+        scene_id=scene_id,
+        order_index=order_index,
+        **body.model_dump(),
+    )
     db.add(item)
     db.commit()
     db.refresh(item)
@@ -167,8 +178,8 @@ def add_shop_item(
 
 @router.put("/{scene_id}/shop-items/{item_id}", response_model=SceneShopItemOut)
 def update_shop_item(
-    scene_id: int,
-    item_id: int,
+    scene_id: str,
+    item_id: str,
     body: SceneShopItemUpdate,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
@@ -189,8 +200,8 @@ def update_shop_item(
 
 @router.delete("/{scene_id}/shop-items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_shop_item(
-    scene_id: int,
-    item_id: int,
+    scene_id: str,
+    item_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> None:

@@ -43,7 +43,8 @@ def seed_initial_user() -> None:
                 "Set INITIAL_PASSWORD in the Railway dashboard (or backend/.env) "
                 "to create the first account."
             )
-        db.add(User(username=username, hashed_password=ph.hash(password)))
+        import uuid as _uuid
+        db.add(User(id=str(_uuid.uuid4()), username=username, hashed_password=ph.hash(password)))
         db.commit()
         print(f"[dm-toolkit] Created initial user '{username}'")
     finally:

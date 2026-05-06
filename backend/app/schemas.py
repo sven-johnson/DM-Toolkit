@@ -101,8 +101,8 @@ class CharacterUpdate(BaseModel):
 
 
 class CharacterOut(BaseModel):
-    id: int
-    campaign_id: int
+    id: str
+    campaign_id: str
     name: str
     char_class: str
     subclass: str
@@ -159,18 +159,18 @@ class RollUpsert(BaseModel):
 
 
 class RollOut(BaseModel):
-    id: int
-    check_id: int
-    character_id: int
+    id: str
+    check_id: str
+    character_id: str
     die_result: int
 
     model_config = {"from_attributes": True}
 
 
 class SessionRollOut(BaseModel):
-    id: int
-    check_id: int
-    character_id: int
+    id: str
+    check_id: str
+    character_id: str
     die_result: int
     check_type: str
     subtype: str
@@ -180,17 +180,17 @@ class SessionRollOut(BaseModel):
 
 
 class RollHistoryItem(BaseModel):
-    id: int
+    id: str
     die_result: int
-    character_id: int
-    check_id: int
+    character_id: str
+    check_id: str
     check_type: str
     subtype: str
     dc: int
-    character_ids: list[int]
-    scene_id: int
+    character_ids: list[str]
+    scene_id: str
     scene_title: str
-    session_id: Optional[int] = None
+    session_id: Optional[str] = None
     session_title: Optional[str] = None
 
     model_config = {"from_attributes": True}
@@ -202,28 +202,28 @@ class RollHistoryItem(BaseModel):
 
 
 class CheckCreate(BaseModel):
-    scene_id: int
+    scene_id: str
     check_type: str
     subtype: str
     dc: int = 10
-    character_ids: list[int] = []
+    character_ids: list[str] = []
 
 
 class CheckUpdate(BaseModel):
     check_type: Optional[str] = None
     subtype: Optional[str] = None
     dc: Optional[int] = None
-    character_ids: Optional[list[int]] = None
+    character_ids: Optional[list[str]] = None
     order_index: Optional[int] = None
 
 
 class CheckOut(BaseModel):
-    id: int
-    scene_id: int
+    id: str
+    scene_id: str
     check_type: str
     subtype: str
     dc: int
-    character_ids: list[int]
+    character_ids: list[str]
     order_index: int
 
     model_config = {"from_attributes": True}
@@ -249,8 +249,8 @@ class SceneEnemyUpdate(BaseModel):
 
 
 class SceneEnemyOut(BaseModel):
-    id: int
-    scene_id: int
+    id: str
+    scene_id: str
     name: str
     quantity: int
     order_index: int
@@ -273,8 +273,8 @@ class SceneShopItemUpdate(BaseModel):
 
 
 class SceneShopItemOut(BaseModel):
-    id: int
-    scene_id: int
+    id: str
+    scene_id: str
     name: str
     description: Optional[str]
     price: int
@@ -307,9 +307,8 @@ class SceneUpdate(BaseModel):
 
 
 class SceneOut(BaseModel):
-    id: int
-    uuid: str
-    storyline_id: int
+    id: str
+    storyline_id: str
     title: str
     body: str
     dm_notes: Optional[str]
@@ -343,9 +342,8 @@ class StorylineUpdate(BaseModel):
 
 
 class StorylineOut(BaseModel):
-    id: int
-    uuid: str
-    campaign_id: int
+    id: str
+    campaign_id: str
     title: str
     description: Optional[str]
     order_index: int
@@ -366,24 +364,23 @@ class StorylineWithScenes(StorylineOut):
 class SessionCreate(BaseModel):
     title: str
     date: Optional[DateType] = None
-    storyline_id: Optional[int] = None
+    storyline_id: Optional[str] = None
 
 
 class SessionUpdate(BaseModel):
     title: Optional[str] = None
     date: Optional[DateType] = None
     recap_notes: Optional[str] = None
-    active_storyline_id: Optional[int] = None
+    active_storyline_id: Optional[str] = None
 
 
 class SessionOut(BaseModel):
-    id: int
-    uuid: str
-    campaign_id: int
+    id: str
+    campaign_id: str
     title: str
     date: Optional[DateType]
     recap_notes: Optional[str]
-    active_storyline_id: Optional[int]
+    active_storyline_id: Optional[str]
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -407,8 +404,7 @@ class CampaignUpdate(BaseModel):
 
 
 class CampaignOut(BaseModel):
-    id: int
-    uuid: str
+    id: str
     name: str
     created_at: datetime
 
@@ -425,11 +421,11 @@ class CampaignWithRelations(CampaignOut):
 
 
 class SceneReorder(BaseModel):
-    scene_ids: list[int]
+    scene_ids: list[str]
 
 
 class CheckReorder(BaseModel):
-    check_ids: list[int]
+    check_ids: list[str]
 
 
 # ---------------------------------------------------------------------------
@@ -468,7 +464,7 @@ class UpdatePasswordRequest(BaseModel):
 
 
 class WikiArticleCreate(BaseModel):
-    campaign_id: int
+    campaign_id: str
     title: str
     category: str = "other"
     is_stub: bool = False
@@ -491,8 +487,8 @@ class WikiArticleUpdate(BaseModel):
 class WikiArticleOut(BaseModel):
     model_config = {"from_attributes": True}
 
-    id: int
-    campaign_id: int
+    id: str
+    campaign_id: str
     title: str
     category: str
     is_stub: bool
@@ -505,7 +501,7 @@ class WikiArticleOut(BaseModel):
 
 
 class WikiSearchResult(BaseModel):
-    id: int
+    id: str
     title: str
     category: str
     tags: Optional[list[str]] = None
@@ -514,9 +510,9 @@ class WikiSearchResult(BaseModel):
 
 
 class WikiAssociationDisplay(BaseModel):
-    id: int
+    id: str
     association_label: str
-    other_article_id: int
+    other_article_id: str
     other_article_title: str
     other_article_category: str
     direction: str  # 'from' (this article is source) | 'to' (this article is target)
@@ -533,9 +529,9 @@ class WikiAddAssociationRequest(BaseModel):
 
 
 class WikiAddAssociationResult(BaseModel):
-    association_id: int
+    association_id: str
     stub_created: bool
-    stub_article_id: Optional[int] = None
+    stub_article_id: Optional[str] = None
 
 
 class WikiImportAssociation(BaseModel):
@@ -556,7 +552,7 @@ class WikiImportArticle(BaseModel):
 
 
 class WikiImportRequest(BaseModel):
-    campaign_id: int
+    campaign_id: str
     articles: list[WikiImportArticle]
 
 
@@ -585,7 +581,7 @@ class WikiExportArticle(BaseModel):
 
 
 class WikiExportResponse(BaseModel):
-    campaign_id: int
+    campaign_id: str
     articles: list[WikiExportArticle]
 
 
@@ -625,7 +621,7 @@ class StorylineExportItem(BaseModel):
 
 
 class StorylineExportResponse(BaseModel):
-    campaign_id: int
+    campaign_id: str
     storylines: list[StorylineExportItem]
 
 
@@ -649,7 +645,7 @@ class StorylineImportItem(BaseModel):
 
 
 class StorylineImportRequest(BaseModel):
-    campaign_id: int
+    campaign_id: str
     storylines: list[StorylineImportItem]
 
 

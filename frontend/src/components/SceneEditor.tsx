@@ -1,6 +1,5 @@
 import {
   forwardRef,
-  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -31,7 +30,7 @@ interface CheckSlashItem {
 
 interface WikiSlashItem {
   type: 'wiki'
-  articleId: number
+  articleId: string
   label: string
   category: string
 }
@@ -46,7 +45,12 @@ interface NameSlashItem {
   label: string
 }
 
-type AnySlashItem = CheckSlashItem | WikiSlashItem | ExplorerSlashItem | NameSlashItem
+interface SceneSlashItem {
+  type: 'scene'
+  label: string
+}
+
+type AnySlashItem = CheckSlashItem | WikiSlashItem | ExplorerSlashItem | NameSlashItem | SceneSlashItem
 
 // Public interface: only check items bubble up to the parent
 interface SlashItem {
@@ -56,7 +60,7 @@ interface SlashItem {
 }
 
 interface WikiArticleRef {
-  id: number
+  id: string
   title: string
   category: string
 }
@@ -85,6 +89,10 @@ function getCheckTitle(item: CheckSlashItem): string {
     const sub = item.subtype.replace(/_save$/, '').replace(/_/g, ' ')
     return `${sub.charAt(0).toUpperCase() + sub.slice(1)} Save`
   }
+}
+
+function getMd(ed: Editor): string {
+  return ((ed.storage as unknown as Record<string, unknown>)['markdown'] as { getMarkdown: () => string }).getMarkdown()
 }
 
 // ---------------------------------------------------------------------------
@@ -143,6 +151,8 @@ const SlashCommandList = forwardRef<SlashCommandListHandle, SlashCommandListProp
               ? <><span className="slash-menu-wiki-icon">🔍</span> {item.label}</>
               : item.type === 'name'
               ? <><span className="slash-menu-wiki-icon">✨</span> {item.label}</>
+              : item.type === 'scene'
+              ? <><span className="slash-menu-wiki-icon">＋</span> {item.label}</>
               : item.type === 'wiki'
               ? <><span className="slash-menu-wiki-icon">📖</span> {item.label}</>
               : item.type === 'skill'
@@ -175,22 +185,34 @@ interface Props {
   onSave: (md: string) => void
   onSelectSlashItem: (item: SlashItem, insertLine: () => void) => void
   wikiArticles?: WikiArticleRef[]
-  onWikiLinkClick?: (articleId: number, title: string) => void
-  campaignId?: number
+  onWikiLinkClick?: (articleId: string, title: string) => void
+  campaignId?: string
+  onAddSceneBelow?: () => void
 }
 
-export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles = [], onWikiLinkClick, campaignId = 0 }: Props) {
+export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles = [], onWikiLinkClick, campaignId = '', onAddSceneBelow }: Props) {
   const [isFocused, setIsFocused] = useState(false)
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const onSaveRef = useRef(onSave)
   const onSelectRef = useRef(onSelectSlashItem)
   const wikiArticlesRef = useRef(wikiArticles)
-  const onWikiClickRef = useRef<((articleId: number, title: string) => void) | null>(onWikiLinkClick ?? null)
+  const onWikiClickRef = useRef<((articleId: string, title: string) => void) | null>(onWikiLinkClick ?? null)
+  const onAddSceneBelowRef = useRef(onAddSceneBelow ?? null)
+
+  // Track unsaved changes without triggering re-renders
+  const pendingMdRef = useRef(content)
+  const isDirtyRef = useRef(false)
 
   useEffect(() => { onSaveRef.current = onSave }, [onSave])
   useEffect(() => { onSelectRef.current = onSelectSlashItem }, [onSelectSlashItem])
   useEffect(() => { wikiArticlesRef.current = wikiArticles }, [wikiArticles])
   useEffect(() => { onWikiClickRef.current = onWikiLinkClick ?? null }, [onWikiLinkClick])
+  useEffect(() => { onAddSceneBelowRef.current = onAddSceneBelow ?? null }, [onAddSceneBelow])
+
+  function flushSave(ed: Editor) {
+    const md = getMd(ed)
+    isDirtyRef.current = false
+    onSaveRef.current(md)
+  }
 
   const [slashPopup, setSlashPopup] = useState<SlashPopup | null>(null)
   const setSlashRef = useRef(setSlashPopup)
@@ -206,12 +228,8 @@ export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles =
   const setNameModalOpenRef = useRef(setNameModalOpen)
   const nameEditorRef = useRef<Editor | null>(null)
 
-  const handleDebouncedSave = useCallback((md: string) => {
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    saveTimerRef.current = setTimeout(() => {
-      onSaveRef.current(md)
-    }, 600)
-  }, [])
+  // flushSave is stable (uses only refs), safe to capture in useMemo closure
+  const flushSaveRef = useRef(flushSave)
 
   const extensions = useMemo(() => {
     const SlashCommand = Extension.create({
@@ -244,8 +262,14 @@ export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles =
                 return
               }
 
+              if (item.type === 'scene') {
+                // Save current content, then add a scene below
+                flushSaveRef.current(ed)
+                onAddSceneBelowRef.current?.()
+                return
+              }
+
               if (item.type === 'wiki') {
-                // Insert inline wiki link node directly — no parent callback needed
                 ed.chain().insertContent({
                   type: 'wikiLink',
                   attrs: {
@@ -254,26 +278,26 @@ export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles =
                     articleCategory: item.category,
                   },
                 }).run()
+                flushSaveRef.current(ed)
                 return
               }
 
-              // skill / save: bubble up to parent
+              // skill / save: bubble up to parent; save fires when insertLine() is called
               const title = getCheckTitle(item)
               const insertLine = () => {
                 ed.chain().insertContent({
                   type: 'checkLine',
                   attrs: { checkType: item.type, title },
                 }).run()
+                flushSaveRef.current(ed)
               }
               onSelectRef.current(item, insertLine)
             },
             items({ query }: { query: string }): AnySlashItem[] {
               const q = query.toLowerCase()
-              // Wiki context: prefix-match on "wiki" or user is typing after "wiki"
               const isWikiContext = 'wiki'.startsWith(q) || q.startsWith('wiki')
               const wikiQuery = q.startsWith('wiki') ? q.slice(4).trim() : ''
 
-              // Explorer item: always first when in wiki context
               const explorerItems: ExplorerSlashItem[] = isWikiContext
                 ? [{ type: 'explorer', label: 'Wiki Explorer' }]
                 : []
@@ -292,7 +316,11 @@ export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles =
                 ? [{ type: 'name', label: 'Name Generator' }]
                 : []
 
-              return [...explorerItems, ...nameItems, ...wikiItems, ...checkItems]
+              const sceneItems: SceneSlashItem[] = fuzzyMatch(query, 'scene')
+                ? [{ type: 'scene', label: 'New Scene Below' }]
+                : []
+
+              return [...explorerItems, ...sceneItems, ...nameItems, ...wikiItems, ...checkItems]
             },
             render() {
               return {
@@ -352,50 +380,58 @@ export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles =
     extensions,
     content: content || '',
     onUpdate({ editor: ed }) {
-      const md: string = ((ed.storage as unknown as Record<string, unknown>)['markdown'] as { getMarkdown: () => string }).getMarkdown()
-      handleDebouncedSave(md)
+      pendingMdRef.current = getMd(ed)
+      isDirtyRef.current = true
     },
     onFocus() { setIsFocused(true) },
-    onBlur() { setIsFocused(false) },
+    onBlur({ editor: ed }) {
+      setIsFocused(false)
+      if (isDirtyRef.current) {
+        isDirtyRef.current = false
+        onSaveRef.current(getMd(ed))
+      }
+    },
   })
 
+  // Sync content from props only when the editor is not focused (never interrupts typing)
   useEffect(() => {
     if (!editor) return
-    const currentMd: string = ((editor.storage as unknown as Record<string, unknown>)['markdown'] as { getMarkdown: () => string }).getMarkdown()
+    if (editor.isFocused) return
+    const currentMd = getMd(editor)
     if (content !== currentMd) {
       editor.commands.setContent(content || '')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content])
 
-  useEffect(() => {
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    }
-  }, [])
-
-  function handleExplorerSelect(id: number, title: string, category: string) {
+  function handleExplorerSelect(id: string, title: string, category: string) {
     if (explorerEditorRef.current) {
-      explorerEditorRef.current.chain().focus().insertContent({
+      const ed = explorerEditorRef.current
+      ed.chain().focus().insertContent({
         type: 'wikiLink',
         attrs: { articleId: id, articleTitle: title, articleCategory: category },
       }).run()
+      flushSave(ed)
     }
     setExplorerOpen(false)
   }
 
   function handleNameInsertText(text: string) {
     if (nameEditorRef.current) {
-      nameEditorRef.current.chain().focus().insertContent(text).run()
+      const ed = nameEditorRef.current
+      ed.chain().focus().insertContent(text).run()
+      flushSave(ed)
     }
   }
 
-  function handleNameInsertWikiLink(articleId: number, title: string, category: string) {
+  function handleNameInsertWikiLink(articleId: string, title: string, category: string) {
     if (nameEditorRef.current) {
-      nameEditorRef.current.chain().focus().insertContent({
+      const ed = nameEditorRef.current
+      ed.chain().focus().insertContent({
         type: 'wikiLink',
         attrs: { articleId, articleTitle: title, articleCategory: category },
       }).run()
+      flushSave(ed)
     }
   }
 

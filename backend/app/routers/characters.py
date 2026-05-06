@@ -189,14 +189,14 @@ router = APIRouter()
     status_code=status.HTTP_201_CREATED,
 )
 def create_character(
-    campaign_id: int,
+    campaign_id: str,
     body: CharacterCreate,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> Character:
     if not db.query(Campaign).filter(Campaign.id == campaign_id).first():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
-    character = Character(campaign_id=campaign_id, **body.model_dump())
+    character = Character(id=str(uuid_lib.uuid4()), campaign_id=campaign_id, **body.model_dump())
     db.add(character)
     db.commit()
     db.refresh(character)
@@ -205,7 +205,7 @@ def create_character(
 
 @router.get("/{character_id}", response_model=CharacterOut)
 def get_character(
-    character_id: int,
+    character_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> Character:
@@ -217,7 +217,7 @@ def get_character(
 
 @router.put("/{character_id}", response_model=CharacterOut)
 def update_character(
-    character_id: int,
+    character_id: str,
     body: CharacterUpdate,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
@@ -234,7 +234,7 @@ def update_character(
 
 @router.delete("/{character_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_character(
-    character_id: int,
+    character_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> None:
@@ -247,8 +247,8 @@ def delete_character(
 
 @router.post("/import-pdf", response_model=CharacterOut, status_code=status.HTTP_201_CREATED)
 async def import_character_pdf(
-    campaign_id: int = Form(...),
-    character_id: Optional[int] = Form(None),
+    campaign_id: str = Form(...),
+    character_id: Optional[str] = Form(None),
     pdf_file: UploadFile = File(...),
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
@@ -283,7 +283,7 @@ async def import_character_pdf(
         db.refresh(character)
         return character
 
-    character = Character(campaign_id=campaign_id, **parsed)
+    character = Character(id=str(uuid_lib.uuid4()), campaign_id=campaign_id, **parsed)
     db.add(character)
     db.commit()
     db.refresh(character)

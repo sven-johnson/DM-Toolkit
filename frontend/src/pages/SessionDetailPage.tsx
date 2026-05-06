@@ -26,50 +26,48 @@ interface SlashItem {
 }
 
 interface PendingCheck {
-  sceneId: number
+  sceneId: string
   type: 'skill' | 'save'
   subtype: string
   label: string
 }
 
 export function SessionDetailPage() {
-  const { campaignId: campaignIdStr, sessionId: sessionIdStr } = useParams<{
+  const { campaignId, sessionId } = useParams<{
     campaignId: string
     sessionId: string
   }>()
-  const campaignId = Number(campaignIdStr)
-  const sessionId = Number(sessionIdStr)
   const queryKey = ['session', sessionId]
 
-  const { data: session, isLoading, isError } = useSession(campaignId, sessionId)
+  const { data: session, isLoading, isError } = useSession(campaignId!, sessionId!)
   const { data: characters = [] } = useCharacters(campaignId)
-  const { data: wikiArticles = [] } = useWikiArticles(campaignId)
-  const { data: sessionRolls = [] } = useSessionRolls(campaignId, sessionId)
-  const { data: storylines = [] } = useCampaignStorylines(campaignId)
+  const { data: wikiArticles = [] } = useWikiArticles(campaignId!)
+  const { data: sessionRolls = [] } = useSessionRolls(campaignId!, sessionId!)
+  const { data: storylines = [] } = useCampaignStorylines(campaignId!)
 
-  const updateSession = useUpdateSession(campaignId, sessionId)
-  const addNextScene = useAddNextScene(campaignId, sessionId)
-  const removeScene = useRemoveSceneFromSession(campaignId, sessionId)
-  const reorderScenes = useReorderSessionScenes(campaignId, sessionId)
+  const updateSession = useUpdateSession(campaignId!, sessionId!)
+  const addNextScene = useAddNextScene(campaignId!, sessionId!)
+  const removeScene = useRemoveSceneFromSession(campaignId!, sessionId!)
+  const reorderScenes = useReorderSessionScenes(campaignId!, sessionId!)
   const updateScene = useUpdateScene(queryKey)
   const createCheck = useCreateCheck(queryKey)
   const updateCheck = useUpdateCheck(queryKey)
 
   const [pendingCheck, setPendingCheck] = useState<PendingCheck | null>(null)
   const [pendingDc, setPendingDc] = useState(10)
-  const [pendingCharIds, setPendingCharIds] = useState<number[]>([])
+  const [pendingCharIds, setPendingCharIds] = useState<string[]>([])
   const [pendingAllChars, setPendingAllChars] = useState(true)
-  const [pendingEditId, setPendingEditId] = useState<number | null>(null)
+  const [pendingEditId, setPendingEditId] = useState<string | null>(null)
   const pendingInsertLineRef = useRef<(() => void) | null>(null)
 
-  const [wikiModalId, setWikiModalId] = useState<number | null>(null)
+  const [wikiModalId, setWikiModalId] = useState<string | null>(null)
   const [showStorylineSelector, setShowStorylineSelector] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
   const [editingRecap, setEditingRecap] = useState(false)
   const [recapDraft, setRecapDraft] = useState('')
 
-  function handleSelectSlashItem(sceneId: number, item: SlashItem, insertLine: () => void) {
+  function handleSelectSlashItem(sceneId: string, item: SlashItem, insertLine: () => void) {
     setPendingCheck({ sceneId, type: item.type, subtype: item.subtype, label: item.label })
     setPendingDc(10)
     setPendingCharIds([])
@@ -136,7 +134,7 @@ export function SessionDetailPage() {
     pendingInsertLineRef.current = null
   }
 
-  function togglePendingChar(charId: number) {
+  function togglePendingChar(charId: string) {
     setPendingCharIds((prev) => {
       const idx = prev.indexOf(charId)
       if (idx >= 0) return prev.filter((id) => id !== charId)
@@ -242,7 +240,7 @@ export function SessionDetailPage() {
                 className="input"
                 defaultValue={session.active_storyline_id ?? ''}
                 onChange={(e) => {
-                  const val = e.target.value === '' ? null : Number(e.target.value)
+                  const val = e.target.value === '' ? null : e.target.value
                   updateSession.mutate({ active_storyline_id: val })
                   setShowStorylineSelector(false)
                 }}

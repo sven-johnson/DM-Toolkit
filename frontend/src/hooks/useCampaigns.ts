@@ -12,7 +12,7 @@ export function useCampaigns() {
   })
 }
 
-export function useCampaign(id: number) {
+export function useCampaign(id: string) {
   return useQuery<CampaignWithRelations>({
     queryKey: ['campaign', id],
     queryFn: async () => {
@@ -23,7 +23,7 @@ export function useCampaign(id: number) {
   })
 }
 
-export function useCampaignStorylines(campaignId: number) {
+export function useCampaignStorylines(campaignId: string) {
   return useQuery<Storyline[]>({
     queryKey: ['campaigns', campaignId, 'storylines'],
     queryFn: async () => {
@@ -49,7 +49,7 @@ export function useCreateCampaign() {
 
 export function useUpdateCampaign() {
   const queryClient = useQueryClient()
-  return useMutation<Campaign, Error, { id: number; name: string }>({
+  return useMutation<Campaign, Error, { id: string; name: string }>({
     mutationFn: async ({ id, ...body }) => {
       const { data } = await apiClient.put<Campaign>(`/campaigns/${id}`, body)
       return data
@@ -63,7 +63,7 @@ export function useUpdateCampaign() {
 
 export function useDeleteCampaign() {
   const queryClient = useQueryClient()
-  return useMutation<void, Error, number>({
+  return useMutation<void, Error, string>({
     mutationFn: async (id) => {
       await apiClient.delete(`/campaigns/${id}`)
     },

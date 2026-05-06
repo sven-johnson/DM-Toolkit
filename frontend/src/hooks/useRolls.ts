@@ -3,14 +3,14 @@ import apiClient from '../api/client'
 import type { Roll, RollHistoryItem, SessionRollOut } from '../types'
 
 interface UpsertRollBody {
-  checkId: number
-  characterId: number
+  checkId: string
+  characterId: string
   dieResult: number
 }
 
 interface DeleteRollBody {
-  checkId: number
-  characterId: number
+  checkId: string
+  characterId: string
 }
 
 export function useUpsertRoll(queryKey: unknown[]) {
@@ -43,7 +43,7 @@ export function useDeleteRoll(queryKey: unknown[]) {
   })
 }
 
-export function useSessionRolls(campaignId: number, sessionId: number) {
+export function useSessionRolls(campaignId: string, sessionId: string) {
   return useQuery<SessionRollOut[]>({
     queryKey: ['sessionRolls', sessionId],
     queryFn: async () => {

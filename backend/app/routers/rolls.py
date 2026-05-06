@@ -1,3 +1,5 @@
+import uuid as uuid_lib
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session as DBSession
 
@@ -11,8 +13,8 @@ router = APIRouter()
 
 @router.put("/rolls/{check_id}/{character_id}", response_model=RollOut)
 def upsert_roll(
-    check_id: int,
-    character_id: int,
+    check_id: str,
+    character_id: str,
     body: RollUpsert,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
@@ -29,7 +31,12 @@ def upsert_roll(
         db.commit()
         db.refresh(existing)
         return existing
-    roll = Roll(check_id=check_id, character_id=character_id, die_result=body.die_result)
+    roll = Roll(
+        id=str(uuid_lib.uuid4()),
+        check_id=check_id,
+        character_id=character_id,
+        die_result=body.die_result,
+    )
     db.add(roll)
     db.commit()
     db.refresh(roll)
@@ -38,8 +45,8 @@ def upsert_roll(
 
 @router.delete("/rolls/{check_id}/{character_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_roll(
-    check_id: int,
-    character_id: int,
+    check_id: str,
+    character_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> None:
@@ -56,7 +63,7 @@ def delete_roll(
 
 @router.get("/sessions/{session_id}/rolls", response_model=list[SessionRollOut])
 def get_session_rolls(
-    session_id: int,
+    session_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> list[SessionRollOut]:
@@ -102,7 +109,6 @@ def get_roll_history(
     for roll in rolls:
         check = roll.check
         scene = check.scene
-        # Get first session association if any
         session_scene = scene.session_scenes[0] if scene.session_scenes else None
         session = session_scene.session if session_scene else None
         result.append(

@@ -11,19 +11,18 @@ import {
 } from '../hooks/useCharacters'
 
 export function CharactersPage() {
-  const { campaignId: campaignIdStr } = useParams<{ campaignId: string }>()
-  const campaignId = Number(campaignIdStr)
+  const { campaignId } = useParams<{ campaignId: string }>()
   const { data: characters = [], isLoading } = useCharacters(campaignId)
-  const createCharacter = useCreateCharacter(campaignId)
-  const updateCharacter = useUpdateCharacter(campaignId)
-  const deleteCharacter = useDeleteCharacter(campaignId)
-  const importPdf = useImportCharacterPdf(campaignId)
+  const createCharacter = useCreateCharacter(campaignId!)
+  const updateCharacter = useUpdateCharacter(campaignId!)
+  const deleteCharacter = useDeleteCharacter(campaignId!)
+  const importPdf = useImportCharacterPdf(campaignId!)
 
-  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
-  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null)
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [showImport, setShowImport] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
-  const [importCharacterId, setImportCharacterId] = useState<number | undefined>(undefined)
+  const [importCharacterId, setImportCharacterId] = useState<string | undefined>(undefined)
   const [importResult, setImportResult] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -122,7 +121,7 @@ export function CharactersPage() {
             <select
               className="input import-pdf-select"
               value={importCharacterId ?? ''}
-              onChange={(e) => setImportCharacterId(e.target.value ? Number(e.target.value) : undefined)}
+              onChange={(e) => setImportCharacterId(e.target.value || undefined)}
             >
               <option value="">— Create new —</option>
               {characters.map((c) => (

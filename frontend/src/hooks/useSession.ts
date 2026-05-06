@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import apiClient from '../api/client'
 import type { Scene, SessionWithScenes } from '../types'
 
-export function useSession(campaignId: number, sessionId: number) {
+export function useSession(campaignId: string, sessionId: string) {
   return useQuery<SessionWithScenes>({
     queryKey: ['session', sessionId],
     queryFn: async () => {
@@ -15,12 +15,12 @@ export function useSession(campaignId: number, sessionId: number) {
   })
 }
 
-export function useUpdateSession(campaignId: number, sessionId: number) {
+export function useUpdateSession(campaignId: string, sessionId: string) {
   const queryClient = useQueryClient()
   return useMutation<
     SessionWithScenes,
     Error,
-    { title?: string; date?: string | null; recap_notes?: string; active_storyline_id?: number | null }
+    { title?: string; date?: string | null; recap_notes?: string; active_storyline_id?: string | null }
   >({
     mutationFn: async (body) => {
       const { data } = await apiClient.put<SessionWithScenes>(
@@ -35,7 +35,7 @@ export function useUpdateSession(campaignId: number, sessionId: number) {
   })
 }
 
-export function useAddNextScene(campaignId: number, sessionId: number) {
+export function useAddNextScene(campaignId: string, sessionId: string) {
   const queryClient = useQueryClient()
   return useMutation<Scene, Error, void>({
     mutationFn: async () => {
@@ -50,9 +50,9 @@ export function useAddNextScene(campaignId: number, sessionId: number) {
   })
 }
 
-export function useRemoveSceneFromSession(campaignId: number, sessionId: number) {
+export function useRemoveSceneFromSession(campaignId: string, sessionId: string) {
   const queryClient = useQueryClient()
-  return useMutation<void, Error, number>({
+  return useMutation<void, Error, string>({
     mutationFn: async (sceneId) => {
       await apiClient.delete(
         `/campaigns/${campaignId}/sessions/${sessionId}/scenes/${sceneId}`,
@@ -64,9 +64,9 @@ export function useRemoveSceneFromSession(campaignId: number, sessionId: number)
   })
 }
 
-export function useReorderSessionScenes(campaignId: number, sessionId: number) {
+export function useReorderSessionScenes(campaignId: string, sessionId: string) {
   const queryClient = useQueryClient()
-  return useMutation<void, Error, number[]>({
+  return useMutation<void, Error, string[]>({
     mutationFn: async (sceneIds) => {
       await apiClient.put(
         `/campaigns/${campaignId}/sessions/${sessionId}/scenes/reorder`,

@@ -21,8 +21,7 @@ from .database import Base
 class Campaign(Base):
     __tablename__ = "campaigns"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    uuid: Mapped[str] = mapped_column(String(36), nullable=False, unique=True)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
@@ -48,10 +47,9 @@ class Campaign(Base):
 class Storyline(Base):
     __tablename__ = "storylines"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    uuid: Mapped[str] = mapped_column(String(36), nullable=False, unique=True)
-    campaign_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("campaigns.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    campaign_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("campaigns.id", ondelete="CASCADE"), nullable=False
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -70,16 +68,15 @@ class Storyline(Base):
 class Session(Base):
     __tablename__ = "sessions"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    uuid: Mapped[str] = mapped_column(String(36), nullable=False, unique=True)
-    campaign_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("campaigns.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    campaign_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("campaigns.id", ondelete="CASCADE"), nullable=False
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     date: Mapped[DateType | None] = mapped_column(Date, nullable=True)
     recap_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    active_storyline_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("storylines.id", ondelete="SET NULL"), nullable=True
+    active_storyline_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("storylines.id", ondelete="SET NULL"), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
@@ -100,12 +97,12 @@ class Session(Base):
 class SessionScene(Base):
     __tablename__ = "session_scenes"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    session_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    session_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False
     )
-    scene_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("scenes.id", ondelete="CASCADE"), nullable=False
+    scene_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("scenes.id", ondelete="CASCADE"), nullable=False
     )
     order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
@@ -118,10 +115,9 @@ class SessionScene(Base):
 class Scene(Base):
     __tablename__ = "scenes"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    uuid: Mapped[str] = mapped_column(String(36), nullable=False, unique=True)
-    storyline_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("storylines.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    storyline_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("storylines.id", ondelete="CASCADE"), nullable=False
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False, default="")
@@ -165,9 +161,9 @@ class Scene(Base):
 class SceneEnemy(Base):
     __tablename__ = "scene_enemies"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    scene_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("scenes.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    scene_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("scenes.id", ondelete="CASCADE"), nullable=False
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
@@ -179,9 +175,9 @@ class SceneEnemy(Base):
 class SceneShopItem(Base):
     __tablename__ = "scene_shop_items"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    scene_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("scenes.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    scene_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("scenes.id", ondelete="CASCADE"), nullable=False
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -195,9 +191,9 @@ class SceneShopItem(Base):
 class Character(Base):
     __tablename__ = "characters"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    campaign_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("campaigns.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    campaign_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("campaigns.id", ondelete="CASCADE"), nullable=False
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     char_class: Mapped[str] = mapped_column(String(255), nullable=False, default="")
@@ -263,9 +259,9 @@ class Character(Base):
 class WikiArticle(Base):
     __tablename__ = "wiki_articles"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    campaign_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("campaigns.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    campaign_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("campaigns.id", ondelete="CASCADE"), nullable=False
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     category: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -298,12 +294,12 @@ class WikiArticle(Base):
 class WikiAssociation(Base):
     __tablename__ = "wiki_associations"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    source_article_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("wiki_articles.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    source_article_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("wiki_articles.id", ondelete="CASCADE"), nullable=False
     )
-    target_article_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("wiki_articles.id", ondelete="CASCADE"), nullable=False
+    target_article_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("wiki_articles.id", ondelete="CASCADE"), nullable=False
     )
     association_label: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -327,9 +323,9 @@ class WikiAssociation(Base):
 class Check(Base):
     __tablename__ = "checks"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    scene_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("scenes.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    scene_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("scenes.id", ondelete="CASCADE"), nullable=False
     )
     check_type: Mapped[str] = mapped_column(String(50), nullable=False)
     subtype: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -348,12 +344,12 @@ class Check(Base):
 class Roll(Base):
     __tablename__ = "rolls"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    check_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("checks.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    check_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("checks.id", ondelete="CASCADE"), nullable=False
     )
-    character_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("characters.id", ondelete="CASCADE"), nullable=False
+    character_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("characters.id", ondelete="CASCADE"), nullable=False
     )
     die_result: Mapped[int] = mapped_column(Integer, nullable=False)
 
@@ -366,7 +362,7 @@ class Roll(Base):
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
     username: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)

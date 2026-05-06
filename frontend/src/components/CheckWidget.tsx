@@ -9,7 +9,7 @@ interface Props {
   characters: Character[]
   queryKey: unknown[]
   onEdit: (check: Check) => void
-  onDelete: (id: number) => void
+  onDelete: (id: string) => void
 }
 
 export function CheckWidget({ check, characters, queryKey, onEdit, onDelete }: Props) {
@@ -51,7 +51,7 @@ export function CheckWidget({ check, characters, queryKey, onEdit, onDelete }: P
       ? characters
       : characters.filter((c) => check.character_ids.includes(c.id))
 
-  function getRollForCharacter(characterId: number) {
+  function getRollForCharacter(characterId: string) {
     return check.rolls.find((r) => r.character_id === characterId)
   }
 

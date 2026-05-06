@@ -27,10 +27,11 @@ interface ScenePatch {
   scene_type?: string
   puzzle_clues?: string | null
   puzzle_solution?: string | null
+  music_cue?: string | null
 }
 
 interface WikiArticleRef {
-  id: number
+  id: string
   title: string
   category: string
 }
@@ -40,14 +41,15 @@ interface Props {
   characters: Character[]
   queryKey: unknown[]
   deleteLabel: string
-  onReorder: (ids: number[]) => void
-  onUpdate: (id: number, patch: ScenePatch) => void
-  onDelete: (id: number) => void
-  onSelectSlashItem: (sceneId: number, item: SlashItem, insertLine: () => void) => void
+  onReorder: (ids: string[]) => void
+  onUpdate: (id: string, patch: ScenePatch) => void
+  onDelete: (id: string) => void
+  onSelectSlashItem: (sceneId: string, item: SlashItem, insertLine: () => void) => void
   onEditCheck: (check: Check) => void
   wikiArticles?: WikiArticleRef[]
-  onWikiLinkClick?: (articleId: number, title: string) => void
-  campaignId?: number
+  onWikiLinkClick?: (articleId: string, title: string) => void
+  campaignId?: string
+  onAddSceneBelow?: (sceneId: string) => void
 }
 
 export function SceneList({
@@ -63,6 +65,7 @@ export function SceneList({
   wikiArticles,
   onWikiLinkClick,
   campaignId,
+  onAddSceneBelow,
 }: Props) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -102,6 +105,7 @@ export function SceneList({
               wikiArticles={wikiArticles}
               onWikiLinkClick={onWikiLinkClick}
               campaignId={campaignId}
+              onAddSceneBelow={onAddSceneBelow ? () => onAddSceneBelow(scene.id) : undefined}
             />
           ))}
         </div>

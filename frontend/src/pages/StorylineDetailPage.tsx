@@ -26,33 +26,31 @@ interface SlashItem {
 }
 
 interface PendingCheck {
-  sceneId: number
+  sceneId: string
   type: 'skill' | 'save'
   subtype: string
   label: string
 }
 
 export function StorylineDetailPage() {
-  const { campaignId: campaignIdStr, storylineId: storylineIdStr } = useParams<{
+  const { campaignId, storylineId } = useParams<{
     campaignId: string
     storylineId: string
   }>()
-  const campaignId = Number(campaignIdStr)
-  const storylineId = Number(storylineIdStr)
   const queryKey = ['storyline', storylineId]
 
-  const { data: storyline, isLoading, isError } = useStoryline(campaignId, storylineId)
+  const { data: storyline, isLoading, isError } = useStoryline(campaignId!, storylineId!)
   const { data: characters = [] } = useCharacters(campaignId)
-  const { data: wikiArticles = [] } = useWikiArticles(campaignId)
+  const { data: wikiArticles = [] } = useWikiArticles(campaignId!)
 
-  const updateStoryline = useUpdateStoryline(campaignId, storylineId)
-  const createScene = useCreateStorylineScene(campaignId, storylineId)
-  const reorderScenes = useReorderStorylineScenes(campaignId, storylineId)
+  const updateStoryline = useUpdateStoryline(campaignId!, storylineId!)
+  const createScene = useCreateStorylineScene(campaignId!, storylineId!)
+  const reorderScenes = useReorderStorylineScenes(campaignId!, storylineId!)
   const deleteScene = useDeleteScene(queryKey)
   const updateScene = useUpdateScene(queryKey)
   const createCheck = useCreateCheck(queryKey)
   const updateCheck = useUpdateCheck(queryKey)
-  const importStorylines = useImportStorylines(campaignId)
+  const importStorylines = useImportStorylines(campaignId!)
   const importFileRef = useRef<HTMLInputElement>(null)
 
   const [importResult, setImportResult] = useState<{ message: string; isError: boolean } | null>(null)
@@ -60,12 +58,12 @@ export function StorylineDetailPage() {
   const [newSceneTitle, setNewSceneTitle] = useState('')
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
-  const [wikiModalId, setWikiModalId] = useState<number | null>(null)
+  const [wikiModalId, setWikiModalId] = useState<string | null>(null)
   const [pendingCheck, setPendingCheck] = useState<PendingCheck | null>(null)
   const [pendingDc, setPendingDc] = useState(10)
-  const [pendingCharIds, setPendingCharIds] = useState<number[]>([])
+  const [pendingCharIds, setPendingCharIds] = useState<string[]>([])
   const [pendingAllChars, setPendingAllChars] = useState(true)
-  const [pendingEditId, setPendingEditId] = useState<number | null>(null)
+  const [pendingEditId, setPendingEditId] = useState<string | null>(null)
   const pendingInsertLineRef = useRef<(() => void) | null>(null)
 
   function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -102,6 +100,21 @@ export function StorylineDetailPage() {
     e.target.value = ''
   }
 
+  function handleAddSceneBelow(sceneId: string) {
+    const sorted = [...(storyline?.scenes ?? [])].sort((a, b) => a.order_index - b.order_index)
+    createScene.mutate(
+      { title: 'New Scene' },
+      {
+        onSuccess: (newScene) => {
+          const idx = sorted.findIndex((s) => s.id === sceneId)
+          const before = sorted.slice(0, idx + 1).map((s) => s.id)
+          const after = sorted.slice(idx + 1).map((s) => s.id)
+          reorderScenes.mutate([...before, newScene.id, ...after])
+        },
+      },
+    )
+  }
+
   function handleAddScene(e: React.FormEvent) {
     e.preventDefault()
     if (!newSceneTitle.trim()) return
@@ -116,7 +129,7 @@ export function StorylineDetailPage() {
     )
   }
 
-  function handleSelectSlashItem(sceneId: number, item: SlashItem, insertLine: () => void) {
+  function handleSelectSlashItem(sceneId: string, item: SlashItem, insertLine: () => void) {
     setPendingCheck({ sceneId, type: item.type, subtype: item.subtype, label: item.label })
     setPendingDc(10)
     setPendingCharIds([])
@@ -177,7 +190,7 @@ export function StorylineDetailPage() {
     pendingInsertLineRef.current = null
   }
 
-  function togglePendingChar(charId: number) {
+  function togglePendingChar(charId: string) {
     setPendingCharIds((prev) => {
       const idx = prev.indexOf(charId)
       if (idx >= 0) return prev.filter((id) => id !== charId)
@@ -228,7 +241,7 @@ export function StorylineDetailPage() {
           <button
             className="btn-ghost"
             type="button"
-            onClick={() => exportStoryline(campaignId, storylineId, storyline?.title ?? 'storyline')}
+            onClick={() => exportStoryline(campaignId!, storylineId!, storyline?.title ?? 'storyline')}
           >
             Export JSON
           </button>
@@ -307,6 +320,7 @@ export function StorylineDetailPage() {
             wikiArticles={wikiArticles}
             onWikiLinkClick={(id) => setWikiModalId(id)}
             campaignId={campaignId}
+            onAddSceneBelow={handleAddSceneBelow}
           />
         </div>
       </div>

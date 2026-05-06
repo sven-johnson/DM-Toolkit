@@ -18,7 +18,7 @@ from ..schemas import (
 router = APIRouter()
 
 
-def _load_session(session_id: int, db: DBSession) -> Session:
+def _load_session(session_id: str, db: DBSession) -> Session:
     return (
         db.query(Session)
         .options(
@@ -44,7 +44,7 @@ def _load_session(session_id: int, db: DBSession) -> Session:
 
 @router.post("", response_model=SessionOut, status_code=status.HTTP_201_CREATED)
 def create_session(
-    campaign_id: int,
+    campaign_id: str,
     body: SessionCreate,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
@@ -60,7 +60,7 @@ def create_session(
 
     data = body.model_dump(exclude={"storyline_id"})
     session = Session(
-        uuid=str(uuid_lib.uuid4()),
+        id=str(uuid_lib.uuid4()),
         campaign_id=campaign_id,
         active_storyline_id=storyline_id,
         **data,
@@ -68,7 +68,6 @@ def create_session(
     db.add(session)
     db.flush()
 
-    # Auto-add the first available scene from the selected storyline
     if storyline_id:
         used_scene_ids = {
             row[0] for row in db.query(SessionScene.scene_id).all()
@@ -83,7 +82,12 @@ def create_session(
             .first()
         )
         if first_scene:
-            ss = SessionScene(session_id=session.id, scene_id=first_scene.id, order_index=0)
+            ss = SessionScene(
+                id=str(uuid_lib.uuid4()),
+                session_id=session.id,
+                scene_id=first_scene.id,
+                order_index=0,
+            )
             db.add(ss)
 
     db.commit()
@@ -93,7 +97,7 @@ def create_session(
 
 @router.get("/{session_id}", response_model=SessionWithScenes)
 def get_session(
-    session_id: int,
+    session_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> Session:
@@ -105,7 +109,7 @@ def get_session(
 
 @router.put("/{session_id}", response_model=SessionOut)
 def update_session(
-    session_id: int,
+    session_id: str,
     body: SessionUpdate,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
@@ -122,7 +126,7 @@ def update_session(
 
 @router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_session(
-    session_id: int,
+    session_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> None:
@@ -135,7 +139,7 @@ def delete_session(
 
 @router.post("/{session_id}/next-scene", response_model=SceneOut)
 def add_next_scene(
-    session_id: int,
+    session_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> Scene:
@@ -148,7 +152,6 @@ def add_next_scene(
             detail="No active storyline set for this session",
         )
 
-    # Scenes already linked to any session
     used_scene_ids = {row[0] for row in db.query(SessionScene.scene_id).all()}
 
     next_scene = (
@@ -167,7 +170,12 @@ def add_next_scene(
         )
 
     next_order = db.query(SessionScene).filter(SessionScene.session_id == session_id).count()
-    ss = SessionScene(session_id=session_id, scene_id=next_scene.id, order_index=next_order)
+    ss = SessionScene(
+        id=str(uuid_lib.uuid4()),
+        session_id=session_id,
+        scene_id=next_scene.id,
+        order_index=next_order,
+    )
     db.add(ss)
     db.commit()
     db.refresh(next_scene)
@@ -178,8 +186,8 @@ def add_next_scene(
     "/{session_id}/scenes/{scene_id}", status_code=status.HTTP_204_NO_CONTENT
 )
 def remove_scene_from_session(
-    session_id: int,
-    scene_id: int,
+    session_id: str,
+    scene_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> None:
@@ -199,7 +207,7 @@ def remove_scene_from_session(
 
 @router.put("/{session_id}/scenes/reorder", status_code=status.HTTP_204_NO_CONTENT)
 def reorder_scenes(
-    session_id: int,
+    session_id: str,
     body: SceneReorder,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),

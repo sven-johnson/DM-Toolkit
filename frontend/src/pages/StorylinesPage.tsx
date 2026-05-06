@@ -5,12 +5,11 @@ import { useCreateStoryline, useDeleteStoryline } from '../hooks/useStorylines'
 
 export function StorylinesPage() {
   const navigate = useNavigate()
-  const { campaignId: campaignIdStr } = useParams<{ campaignId: string }>()
-  const campaignId = Number(campaignIdStr)
+  const { campaignId } = useParams<{ campaignId: string }>()
 
-  const { data: storylines = [], isLoading, isError } = useCampaignStorylines(campaignId)
-  const createStoryline = useCreateStoryline(campaignId)
-  const deleteStoryline = useDeleteStoryline(campaignId)
+  const { data: storylines = [], isLoading, isError } = useCampaignStorylines(campaignId!)
+  const createStoryline = useCreateStoryline(campaignId!)
+  const deleteStoryline = useDeleteStoryline(campaignId!)
 
   const [creating, setCreating] = useState(false)
   const [newTitle, setNewTitle] = useState('')

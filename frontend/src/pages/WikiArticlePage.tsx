@@ -5,12 +5,10 @@ import { CATEGORY_COLORS, CATEGORY_LABELS, type WikiCategory } from '../constant
 import { exportWikiArticle, useDeleteWikiArticle, useWikiArticle } from '../hooks/useWiki'
 
 export function WikiArticlePage() {
-  const { campaignId: campaignIdStr, articleId: articleIdStr } = useParams<{
+  const { campaignId, articleId } = useParams<{
     campaignId: string
     articleId: string
   }>()
-  const campaignId = Number(campaignIdStr)
-  const articleId = Number(articleIdStr)
   const navigate = useNavigate()
 
   const { data: article, isLoading } = useWikiArticle(articleId)

@@ -13,7 +13,7 @@ function escapeAttr(str: string): string {
 }
 
 export function createWikiLinkExtension(
-  onClickRef: RefObject<((articleId: number, title: string) => void) | null>,
+  onClickRef: RefObject<((articleId: string, title: string) => void) | null>,
 ) {
   return Node.create({
     name: 'wikiLink',
@@ -26,9 +26,9 @@ export function createWikiLinkExtension(
     addAttributes() {
       return {
         articleId: {
-          default: 0,
-          parseHTML: (el) => Number(el.getAttribute('data-wiki-id') ?? 0),
-          renderHTML: (attrs: { articleId: number }) => ({ 'data-wiki-id': String(attrs.articleId) }),
+          default: '',
+          parseHTML: (el) => el.getAttribute('data-wiki-id') ?? '',
+          renderHTML: (attrs: { articleId: string }) => ({ 'data-wiki-id': attrs.articleId }),
         },
         articleTitle: {
           default: '',
@@ -57,7 +57,7 @@ export function createWikiLinkExtension(
 
     addNodeView() {
       return ({ node }: { node: ProseMirrorNode }) => {
-        const attrs = node.attrs as { articleId: number; articleTitle: string; articleCategory: string }
+        const attrs = node.attrs as { articleId: string; articleTitle: string; articleCategory: string }
         const dom = document.createElement('span')
         dom.setAttribute('contenteditable', 'false')
         dom.className = 'wiki-link-chip'
@@ -73,7 +73,7 @@ export function createWikiLinkExtension(
       return {
         markdown: {
           serialize(state: MarkdownSerializerState, node: ProseMirrorNode) {
-            const attrs = node.attrs as { articleId: number; articleTitle: string; articleCategory: string }
+            const attrs = node.attrs as { articleId: string; articleTitle: string; articleCategory: string }
             state.write(
               `<span data-wiki-link data-wiki-id="${attrs.articleId}" data-wiki-title="${escapeAttr(attrs.articleTitle)}" data-wiki-category="${escapeAttr(attrs.articleCategory)}">${escapeAttr(attrs.articleTitle)}</span>`,
             )

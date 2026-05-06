@@ -11,7 +11,7 @@ import type {
   StorylineWithScenes,
 } from '../types'
 
-export function useStoryline(campaignId: number, storylineId: number) {
+export function useStoryline(campaignId: string, storylineId: string) {
   return useQuery<StorylineWithScenes>({
     queryKey: ['storyline', storylineId],
     queryFn: async () => {
@@ -24,7 +24,7 @@ export function useStoryline(campaignId: number, storylineId: number) {
   })
 }
 
-export function useCreateStoryline(campaignId: number) {
+export function useCreateStoryline(campaignId: string) {
   const queryClient = useQueryClient()
   return useMutation<Storyline, Error, { title: string; description?: string | null }>({
     mutationFn: async (body) => {
@@ -41,7 +41,7 @@ export function useCreateStoryline(campaignId: number) {
   })
 }
 
-export function useUpdateStoryline(campaignId: number, storylineId: number) {
+export function useUpdateStoryline(campaignId: string, storylineId: string) {
   const queryClient = useQueryClient()
   return useMutation<Storyline, Error, { title?: string; description?: string | null }>({
     mutationFn: async (body) => {
@@ -58,9 +58,9 @@ export function useUpdateStoryline(campaignId: number, storylineId: number) {
   })
 }
 
-export function useDeleteStoryline(campaignId: number) {
+export function useDeleteStoryline(campaignId: string) {
   const queryClient = useQueryClient()
-  return useMutation<void, Error, number>({
+  return useMutation<void, Error, string>({
     mutationFn: async (storylineId) => {
       await apiClient.delete(`/campaigns/${campaignId}/storylines/${storylineId}`)
     },
@@ -71,7 +71,7 @@ export function useDeleteStoryline(campaignId: number) {
   })
 }
 
-export function useCreateStorylineScene(campaignId: number, storylineId: number) {
+export function useCreateStorylineScene(campaignId: string, storylineId: string) {
   const queryClient = useQueryClient()
   return useMutation<Scene, Error, { title: string; scene_type?: string }>({
     mutationFn: async (body) => {
@@ -87,9 +87,9 @@ export function useCreateStorylineScene(campaignId: number, storylineId: number)
   })
 }
 
-export function useReorderStorylineScenes(campaignId: number, storylineId: number) {
+export function useReorderStorylineScenes(campaignId: string, storylineId: string) {
   const queryClient = useQueryClient()
-  return useMutation<void, Error, number[]>({
+  return useMutation<void, Error, string[]>({
     mutationFn: async (sceneIds) => {
       await apiClient.put(
         `/campaigns/${campaignId}/storylines/${storylineId}/scenes/reorder`,
@@ -106,7 +106,7 @@ export function useReorderStorylineScenes(campaignId: number, storylineId: numbe
 // queryKey is passed in so each view invalidates its own cache
 export function useUpdateScene(queryKey: unknown[]) {
   const queryClient = useQueryClient()
-  return useMutation<Scene, Error, { id: number; title?: string; body?: string; dm_notes?: string | null; scene_type?: string; puzzle_clues?: string | null; puzzle_solution?: string | null }>({
+  return useMutation<Scene, Error, { id: string; title?: string; body?: string; dm_notes?: string | null; scene_type?: string; puzzle_clues?: string | null; puzzle_solution?: string | null; music_cue?: string | null }>({
     mutationFn: async ({ id, ...body }) => {
       const { data } = await apiClient.put<Scene>(`/scenes/${id}`, body)
       return data
@@ -119,7 +119,7 @@ export function useUpdateScene(queryKey: unknown[]) {
 
 export function useDeleteScene(queryKey: unknown[]) {
   const queryClient = useQueryClient()
-  return useMutation<void, Error, number>({
+  return useMutation<void, Error, string>({
     mutationFn: async (id) => {
       await apiClient.delete(`/scenes/${id}`)
     },
@@ -132,7 +132,7 @@ export function useDeleteScene(queryKey: unknown[]) {
 // Enemies
 export function useAddEnemy(queryKey: unknown[]) {
   const queryClient = useQueryClient()
-  return useMutation<SceneEnemy, Error, { sceneId: number; name: string; quantity: number }>({
+  return useMutation<SceneEnemy, Error, { sceneId: string; name: string; quantity: number }>({
     mutationFn: async ({ sceneId, ...body }) => {
       const { data } = await apiClient.post<SceneEnemy>(`/scenes/${sceneId}/enemies`, body)
       return data
@@ -143,7 +143,7 @@ export function useAddEnemy(queryKey: unknown[]) {
 
 export function useUpdateEnemy(queryKey: unknown[]) {
   const queryClient = useQueryClient()
-  return useMutation<SceneEnemy, Error, { sceneId: number; enemyId: number; name?: string; quantity?: number }>({
+  return useMutation<SceneEnemy, Error, { sceneId: string; enemyId: string; name?: string; quantity?: number }>({
     mutationFn: async ({ sceneId, enemyId, ...body }) => {
       const { data } = await apiClient.put<SceneEnemy>(`/scenes/${sceneId}/enemies/${enemyId}`, body)
       return data
@@ -154,7 +154,7 @@ export function useUpdateEnemy(queryKey: unknown[]) {
 
 export function useDeleteEnemy(queryKey: unknown[]) {
   const queryClient = useQueryClient()
-  return useMutation<void, Error, { sceneId: number; enemyId: number }>({
+  return useMutation<void, Error, { sceneId: string; enemyId: string }>({
     mutationFn: async ({ sceneId, enemyId }) => {
       await apiClient.delete(`/scenes/${sceneId}/enemies/${enemyId}`)
     },
@@ -165,7 +165,7 @@ export function useDeleteEnemy(queryKey: unknown[]) {
 // Shop items
 export function useAddShopItem(queryKey: unknown[]) {
   const queryClient = useQueryClient()
-  return useMutation<SceneShopItem, Error, { sceneId: number; name: string; description: string; price: number; currency: string }>({
+  return useMutation<SceneShopItem, Error, { sceneId: string; name: string; description: string; price: number; currency: string }>({
     mutationFn: async ({ sceneId, ...body }) => {
       const { data } = await apiClient.post<SceneShopItem>(`/scenes/${sceneId}/shop-items`, body)
       return data
@@ -176,7 +176,7 @@ export function useAddShopItem(queryKey: unknown[]) {
 
 export function useUpdateShopItem(queryKey: unknown[]) {
   const queryClient = useQueryClient()
-  return useMutation<SceneShopItem, Error, { sceneId: number; itemId: number; name?: string; description?: string; price?: number; currency?: string }>({
+  return useMutation<SceneShopItem, Error, { sceneId: string; itemId: string; name?: string; description?: string; price?: number; currency?: string }>({
     mutationFn: async ({ sceneId, itemId, ...body }) => {
       const { data } = await apiClient.put<SceneShopItem>(`/scenes/${sceneId}/shop-items/${itemId}`, body)
       return data
@@ -187,7 +187,7 @@ export function useUpdateShopItem(queryKey: unknown[]) {
 
 export function useDeleteShopItem(queryKey: unknown[]) {
   const queryClient = useQueryClient()
-  return useMutation<void, Error, { sceneId: number; itemId: number }>({
+  return useMutation<void, Error, { sceneId: string; itemId: string }>({
     mutationFn: async ({ sceneId, itemId }) => {
       await apiClient.delete(`/scenes/${sceneId}/shop-items/${itemId}`)
     },
@@ -199,7 +199,7 @@ export function useDeleteShopItem(queryKey: unknown[]) {
 // Import / export
 // ---------------------------------------------------------------------------
 
-export function useImportStorylines(campaignId: number) {
+export function useImportStorylines(campaignId: string) {
   const queryClient = useQueryClient()
   return useMutation<StorylineImportResult, Error, StorylineImportRequest>({
     mutationFn: async (body) => {
@@ -216,7 +216,7 @@ export function useImportStorylines(campaignId: number) {
   })
 }
 
-export async function exportAllStorylines(campaignId: number): Promise<void> {
+export async function exportAllStorylines(campaignId: string): Promise<void> {
   const { data } = await apiClient.get<StorylineExportResponse>(
     `/campaigns/${campaignId}/storylines/export`,
   )
@@ -230,8 +230,8 @@ export async function exportAllStorylines(campaignId: number): Promise<void> {
 }
 
 export async function exportStoryline(
-  campaignId: number,
-  storylineId: number,
+  campaignId: string,
+  storylineId: string,
   title: string,
 ): Promise<void> {
   const { data } = await apiClient.get<StorylineExportResponse>(

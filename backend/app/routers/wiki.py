@@ -1,3 +1,4 @@
+import uuid as uuid_lib
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -93,7 +94,7 @@ def _make_snippet(text: str, query: str, radius: int = 90) -> Optional[str]:
 
 @router.get("/export", response_model=WikiExportResponse)
 def export_all_wiki(
-    campaign_id: int = Query(...),
+    campaign_id: str = Query(...),
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> WikiExportResponse:
@@ -206,7 +207,7 @@ def import_wiki(
     errors: list[str] = []
 
     # Build title → id map from existing articles
-    title_map: dict[str, int] = {
+    title_map: dict[str, str] = {
         a.title: a.id
         for a in db.query(WikiArticle)
         .filter(WikiArticle.campaign_id == campaign_id)
@@ -234,6 +235,7 @@ def import_wiki(
                     updated += 1
             else:
                 art = WikiArticle(
+                    id=str(uuid_lib.uuid4()),
                     campaign_id=campaign_id,
                     title=imp.title,
                     category=imp.category,
@@ -253,7 +255,7 @@ def import_wiki(
     db.commit()
 
     # Rebuild map to include any newly created articles
-    title_map = {
+    title_map = {  # type: ignore[assignment]
         a.title: a.id
         for a in db.query(WikiArticle)
         .filter(WikiArticle.campaign_id == campaign_id)
@@ -270,6 +272,7 @@ def import_wiki(
                 target_id = title_map.get(assoc_imp.target_title)
                 if target_id is None:
                     stub = WikiArticle(
+                        id=str(uuid_lib.uuid4()),
                         campaign_id=campaign_id,
                         title=assoc_imp.target_title,
                         category=assoc_imp.target_category,
@@ -295,6 +298,7 @@ def import_wiki(
                 if exists is None:
                     db.add(
                         WikiAssociation(
+                            id=str(uuid_lib.uuid4()),
                             source_article_id=source_id,
                             target_article_id=target_id,
                             association_label=assoc_imp.association_label,
@@ -318,7 +322,7 @@ def import_wiki(
 
 @router.get("/search", response_model=list[WikiSearchResult])
 def search_wiki(
-    campaign_id: int = Query(...),
+    campaign_id: str = Query(...),
     q: str = Query(...),
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
@@ -365,7 +369,7 @@ def search_wiki(
 
 @router.get("", response_model=list[WikiArticleOut])
 def list_wiki_articles(
-    campaign_id: int = Query(...),
+    campaign_id: str = Query(...),
     category: Optional[str] = Query(None),
     tag: Optional[str] = Query(None),
     q: Optional[str] = Query(None),
@@ -410,7 +414,7 @@ def create_wiki_article(
         raise HTTPException(
             status_code=409, detail="An article with this title already exists"
         )
-    article = WikiArticle(**body.model_dump())
+    article = WikiArticle(id=str(uuid_lib.uuid4()), **body.model_dump())
     db.add(article)
     db.commit()
     db.refresh(article)
@@ -419,7 +423,7 @@ def create_wiki_article(
 
 @router.get("/{article_id}", response_model=WikiArticleDetail)
 def get_wiki_article(
-    article_id: int,
+    article_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> WikiArticleDetail:
@@ -433,7 +437,7 @@ def get_wiki_article(
 
 @router.put("/{article_id}", response_model=WikiArticleOut)
 def update_wiki_article(
-    article_id: int,
+    article_id: str,
     body: WikiArticleUpdate,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
@@ -455,7 +459,7 @@ def update_wiki_article(
 
 @router.delete("/{article_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_wiki_article(
-    article_id: int,
+    article_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> None:
@@ -468,7 +472,7 @@ def delete_wiki_article(
 
 @router.get("/{article_id}/export", response_model=WikiExportResponse)
 def export_single_article(
-    article_id: int,
+    article_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> WikiExportResponse:
@@ -516,7 +520,7 @@ def export_single_article(
     status_code=status.HTTP_201_CREATED,
 )
 def add_association(
-    article_id: int,
+    article_id: str,
     body: WikiAddAssociationRequest,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
@@ -535,10 +539,11 @@ def add_association(
     )
 
     stub_created = False
-    stub_article_id: Optional[int] = None
+    stub_article_id: Optional[str] = None
 
     if target is None:
         target = WikiArticle(
+            id=str(uuid_lib.uuid4()),
             campaign_id=article.campaign_id,
             title=body.target_title,
             category=body.target_category,
@@ -564,6 +569,7 @@ def add_association(
         raise HTTPException(status_code=409, detail="This association already exists")
 
     assoc = WikiAssociation(
+        id=str(uuid_lib.uuid4()),
         source_article_id=article_id,
         target_article_id=target.id,
         association_label=body.association_label,
@@ -583,7 +589,7 @@ def add_association(
     "/associations/{association_id}", status_code=status.HTTP_204_NO_CONTENT
 )
 def delete_association(
-    association_id: int,
+    association_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> None:

@@ -31,7 +31,7 @@ interface ScenePatch {
 }
 
 interface WikiArticleRef {
-  id: number
+  id: string
   title: string
   category: string
 }
@@ -41,13 +41,14 @@ interface Props {
   characters: Character[]
   queryKey: unknown[]
   deleteLabel: string
-  onUpdate: (id: number, patch: ScenePatch) => void
-  onDelete: (id: number) => void
-  onSelectSlashItem: (sceneId: number, item: SlashItem, insertLine: () => void) => void
+  onUpdate: (id: string, patch: ScenePatch) => void
+  onDelete: (id: string) => void
+  onSelectSlashItem: (sceneId: string, item: SlashItem, insertLine: () => void) => void
   onEditCheck: (check: Check) => void
   wikiArticles?: WikiArticleRef[]
-  onWikiLinkClick?: (articleId: number, title: string) => void
-  campaignId?: number
+  onWikiLinkClick?: (articleId: string, title: string) => void
+  campaignId?: string
+  onAddSceneBelow?: () => void
 }
 
 export function SceneCard({
@@ -62,6 +63,7 @@ export function SceneCard({
   wikiArticles,
   onWikiLinkClick,
   campaignId,
+  onAddSceneBelow,
 }: Props) {
   const [collapsed, setCollapsed] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
@@ -281,6 +283,7 @@ export function SceneCard({
             wikiArticles={wikiArticles}
             onWikiLinkClick={onWikiLinkClick}
             campaignId={campaignId}
+            onAddSceneBelow={onAddSceneBelow}
           />
 
           <DmNotesEditor

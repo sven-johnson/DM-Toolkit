@@ -16,7 +16,7 @@ export function CampaignsPage() {
 
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
-  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
 
   function handleCreate(e: React.FormEvent) {
@@ -34,7 +34,7 @@ export function CampaignsPage() {
     )
   }
 
-  function commitEdit(id: number) {
+  function commitEdit(id: string) {
     if (editName.trim() && editName.trim() !== campaigns?.find((c) => c.id === id)?.name) {
       updateCampaign.mutate({ id, name: editName.trim() })
     }

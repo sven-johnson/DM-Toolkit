@@ -12,17 +12,15 @@ import {
 } from '../hooks/useWiki'
 
 export function WikiEditorPage() {
-  const { campaignId: campaignIdStr, articleId: articleIdStr } = useParams<{
+  const { campaignId, articleId } = useParams<{
     campaignId: string
     articleId?: string
   }>()
-  const campaignId = Number(campaignIdStr)
-  const articleId = articleIdStr ? Number(articleIdStr) : undefined
   const isEditing = articleId !== undefined
   const navigate = useNavigate()
 
   const { data: article, isLoading } = useWikiArticle(articleId)
-  const { data: allArticles = [] } = useWikiArticles(campaignId)
+  const { data: allArticles = [] } = useWikiArticles(campaignId!)
 
   // Form state
   const [title, setTitle] = useState('')
@@ -40,10 +38,10 @@ export function WikiEditorPage() {
   const [assocCategory, setAssocCategory] = useState('other')
   const [assocLabel, setAssocLabel] = useState('')
 
-  const createArticle = useCreateWikiArticle(campaignId)
-  const updateArticle = useUpdateWikiArticle(campaignId)
-  const addAssociation = useAddWikiAssociation(articleId ?? 0, campaignId)
-  const deleteAssociation = useDeleteWikiAssociation(articleId ?? 0, campaignId)
+  const createArticle = useCreateWikiArticle(campaignId!)
+  const updateArticle = useUpdateWikiArticle(campaignId!)
+  const addAssociation = useAddWikiAssociation(articleId ?? '', campaignId!)
+  const deleteAssociation = useDeleteWikiAssociation(articleId ?? '', campaignId!)
 
   // Pre-fill form when editing
   useEffect(() => {

@@ -28,7 +28,7 @@ router = APIRouter()
 
 @router.post("", response_model=StorylineOut, status_code=status.HTTP_201_CREATED)
 def create_storyline(
-    campaign_id: int,
+    campaign_id: str,
     body: StorylineCreate,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
@@ -37,7 +37,7 @@ def create_storyline(
         db.query(Storyline).filter(Storyline.campaign_id == campaign_id).count()
     )
     storyline = Storyline(
-        uuid=str(uuid_lib.uuid4()),
+        id=str(uuid_lib.uuid4()),
         campaign_id=campaign_id,
         order_index=order_index,
         **body.model_dump(),
@@ -82,7 +82,7 @@ def _storyline_to_export(storyline: Storyline) -> StorylineExportItem:
     )
 
 
-def _load_storyline_full(db: DBSession, storyline_id: int) -> Storyline | None:
+def _load_storyline_full(db: DBSession, storyline_id: str) -> Storyline | None:
     return (
         db.query(Storyline)
         .options(
@@ -96,7 +96,7 @@ def _load_storyline_full(db: DBSession, storyline_id: int) -> Storyline | None:
 
 @router.get("/export", response_model=StorylineExportResponse)
 def export_storylines(
-    campaign_id: int,
+    campaign_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> StorylineExportResponse:
@@ -122,20 +122,11 @@ def export_storylines(
     status_code=status.HTTP_200_OK,
 )
 def import_storylines(
-    campaign_id: int,
+    campaign_id: str,
     body: StorylineImportRequest,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> StorylineImportResult:
-    """
-    Bulk-import storylines and scenes from a portable JSON document.
-
-    Storylines are matched by title within the campaign — existing ones are
-    updated, new titles are created. Scenes are matched by title within their
-    storyline — existing scenes are updated (body, notes, enemies, shop_items
-    are replaced), new titles are created. Order is preserved as given in the
-    import payload.
-    """
     storylines_created = 0
     storylines_updated = 0
     scenes_created = 0
@@ -159,7 +150,7 @@ def import_storylines(
                     Storyline.campaign_id == campaign_id
                 ).count()
                 storyline = Storyline(
-                    uuid=str(uuid_lib.uuid4()),
+                    id=str(uuid_lib.uuid4()),
                     campaign_id=campaign_id,
                     title=imp_sl.title,
                     description=imp_sl.description,
@@ -170,7 +161,6 @@ def import_storylines(
                 title_map[storyline.title] = storyline
                 storylines_created += 1
 
-            # Load existing scenes for this storyline keyed by title
             existing_scenes = (
                 db.query(Scene)
                 .options(
@@ -194,7 +184,6 @@ def import_storylines(
                         scene.music_cue = imp_sc.music_cue
                         scene.order_index = idx
                         db.flush()
-                        # Replace enemies and shop_items
                         for e in list(scene.enemies):
                             db.delete(e)
                         for i in list(scene.shop_items):
@@ -203,7 +192,7 @@ def import_storylines(
                         scenes_updated += 1
                     else:
                         scene = Scene(
-                            uuid=str(uuid_lib.uuid4()),
+                            id=str(uuid_lib.uuid4()),
                             storyline_id=storyline.id,
                             title=imp_sc.title,
                             body=imp_sc.body,
@@ -221,6 +210,7 @@ def import_storylines(
 
                     for e_idx, e in enumerate(imp_sc.enemies):
                         db.add(SceneEnemy(
+                            id=str(uuid_lib.uuid4()),
                             scene_id=scene.id,
                             name=e.name,
                             quantity=e.quantity,
@@ -228,6 +218,7 @@ def import_storylines(
                         ))
                     for i_idx, i in enumerate(imp_sc.shop_items):
                         db.add(SceneShopItem(
+                            id=str(uuid_lib.uuid4()),
                             scene_id=scene.id,
                             name=i.name,
                             description=i.description,
@@ -254,8 +245,8 @@ def import_storylines(
 
 @router.get("/{storyline_id}/export", response_model=StorylineExportResponse)
 def export_storyline(
-    campaign_id: int,
-    storyline_id: int,
+    campaign_id: str,
+    storyline_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> StorylineExportResponse:
@@ -270,7 +261,7 @@ def export_storyline(
 
 @router.get("/{storyline_id}", response_model=StorylineWithScenes)
 def get_storyline(
-    storyline_id: int,
+    storyline_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> Storyline:
@@ -297,7 +288,7 @@ def get_storyline(
 
 @router.put("/{storyline_id}", response_model=StorylineOut)
 def update_storyline(
-    storyline_id: int,
+    storyline_id: str,
     body: StorylineUpdate,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
@@ -314,7 +305,7 @@ def update_storyline(
 
 @router.delete("/{storyline_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_storyline(
-    storyline_id: int,
+    storyline_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> None:
@@ -331,7 +322,7 @@ def delete_storyline(
     status_code=status.HTTP_201_CREATED,
 )
 def create_scene(
-    storyline_id: int,
+    storyline_id: str,
     body: SceneCreate,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
@@ -340,7 +331,7 @@ def create_scene(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Storyline not found")
     order_index = db.query(Scene).filter(Scene.storyline_id == storyline_id).count()
     scene = Scene(
-        uuid=str(uuid_lib.uuid4()),
+        id=str(uuid_lib.uuid4()),
         storyline_id=storyline_id,
         order_index=order_index,
         **body.model_dump(),
@@ -353,7 +344,7 @@ def create_scene(
 
 @router.put("/{storyline_id}/scenes/reorder", status_code=status.HTTP_204_NO_CONTENT)
 def reorder_scenes(
-    storyline_id: int,
+    storyline_id: str,
     body: SceneReorder,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),

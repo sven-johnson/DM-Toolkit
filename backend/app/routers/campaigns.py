@@ -33,7 +33,7 @@ def create_campaign(
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> Campaign:
-    campaign = Campaign(uuid=str(uuid.uuid4()), **body.model_dump())
+    campaign = Campaign(id=str(uuid.uuid4()), **body.model_dump())
     db.add(campaign)
     db.commit()
     db.refresh(campaign)
@@ -42,7 +42,7 @@ def create_campaign(
 
 @router.get("/{campaign_id}", response_model=CampaignWithRelations)
 def get_campaign(
-    campaign_id: int,
+    campaign_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> Campaign:
@@ -59,7 +59,7 @@ def get_campaign(
 
 @router.put("/{campaign_id}", response_model=CampaignOut)
 def update_campaign(
-    campaign_id: int,
+    campaign_id: str,
     body: CampaignUpdate,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
@@ -76,7 +76,7 @@ def update_campaign(
 
 @router.delete("/{campaign_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_campaign(
-    campaign_id: int,
+    campaign_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> None:
@@ -89,7 +89,7 @@ def delete_campaign(
 
 @router.get("/{campaign_id}/sessions", response_model=list[SessionOut])
 def list_campaign_sessions(
-    campaign_id: int,
+    campaign_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> list[Session]:
@@ -105,7 +105,7 @@ def list_campaign_sessions(
 
 @router.get("/{campaign_id}/storylines", response_model=list[StorylineOut])
 def list_campaign_storylines(
-    campaign_id: int,
+    campaign_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> list[Storyline]:
@@ -121,7 +121,7 @@ def list_campaign_storylines(
 
 @router.get("/{campaign_id}/characters", response_model=list[CharacterOut])
 def list_campaign_characters(
-    campaign_id: int,
+    campaign_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> list[Character]:

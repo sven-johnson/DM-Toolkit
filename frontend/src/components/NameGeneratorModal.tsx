@@ -8,10 +8,10 @@ interface ProfileInfo {
 }
 
 interface Props {
-  campaignId: number
+  campaignId: string
   onClose: () => void
   onInsertText: (text: string) => void
-  onInsertWikiLink: (articleId: number, title: string, category: string) => void
+  onInsertWikiLink: (articleId: string, title: string, category: string) => void
 }
 
 export function NameGeneratorModal({ campaignId, onClose, onInsertText, onInsertWikiLink }: Props) {
@@ -61,7 +61,7 @@ export function NameGeneratorModal({ campaignId, onClose, onInsertText, onInsert
     setIsCreatingStub(true)
     setError(null)
     try {
-      const { data } = await apiClient.post<{ id: number; title: string; category: string }>('/wiki', {
+      const { data } = await apiClient.post<{ id: string; title: string; category: string }>('/wiki', {
         campaign_id: campaignId,
         title: name.trim(),
         category: 'npc',

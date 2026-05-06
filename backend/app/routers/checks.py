@@ -1,3 +1,5 @@
+import uuid as uuid_lib
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session as DBSession
 
@@ -15,7 +17,7 @@ router = APIRouter()
     status_code=status.HTTP_201_CREATED,
 )
 def create_check(
-    scene_id: int,
+    scene_id: str,
     body: CheckCreate,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
@@ -24,6 +26,7 @@ def create_check(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scene not found")
     order_index = db.query(Check).filter(Check.scene_id == scene_id).count()
     check = Check(
+        id=str(uuid_lib.uuid4()),
         scene_id=scene_id,
         check_type=body.check_type,
         subtype=body.subtype,
@@ -39,7 +42,7 @@ def create_check(
 
 @router.put("/checks/{check_id}", response_model=CheckWithRolls)
 def update_check(
-    check_id: int,
+    check_id: str,
     body: CheckUpdate,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
@@ -56,7 +59,7 @@ def update_check(
 
 @router.delete("/checks/{check_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_check(
-    check_id: int,
+    check_id: str,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> None:
@@ -72,7 +75,7 @@ def delete_check(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def reorder_checks(
-    scene_id: int,
+    scene_id: str,
     body: CheckReorder,
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),

@@ -20,10 +20,10 @@ export function RollHistoryPage() {
     )
   }
 
-  const charMap = new Map<number, Character>(characters.map((c) => [c.id, c]))
+  const charMap = new Map<string, Character>(characters.map((c) => [c.id, c]))
 
   // Group by session
-  const sessionGroups = new Map<number | null, { title: string | null; rolls: RollHistoryItem[] }>()
+  const sessionGroups = new Map<string | null, { title: string | null; rolls: RollHistoryItem[] }>()
   for (const roll of history) {
     if (!sessionGroups.has(roll.session_id)) {
       sessionGroups.set(roll.session_id, { title: roll.session_title, rolls: [] })
@@ -40,7 +40,7 @@ export function RollHistoryPage() {
       {Array.from(sessionGroups.entries()).map(([sessionId, group]) => {
         // Group rolls by check within this session
         const checkGroups = new Map<
-          number,
+          string,
           { checkType: string; subtype: string; dc: number; rolls: RollHistoryItem[] }
         >()
         for (const roll of group.rolls) {

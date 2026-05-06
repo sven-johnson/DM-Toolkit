@@ -18,7 +18,7 @@ interface WikiFilters {
   stubs?: boolean
 }
 
-export function useWikiArticles(campaignId: number, filters: WikiFilters = {}) {
+export function useWikiArticles(campaignId: string, filters: WikiFilters = {}) {
   return useQuery<WikiArticle[]>({
     queryKey: ['campaigns', campaignId, 'wiki', filters],
     queryFn: async () => {
@@ -35,7 +35,7 @@ export function useWikiArticles(campaignId: number, filters: WikiFilters = {}) {
   })
 }
 
-export function useWikiSearch(campaignId: number, q: string) {
+export function useWikiSearch(campaignId: string, q: string) {
   return useQuery<WikiSearchResult[]>({
     queryKey: ['campaigns', campaignId, 'wiki', 'search', q],
     queryFn: async () => {
@@ -50,7 +50,7 @@ export function useWikiSearch(campaignId: number, q: string) {
   })
 }
 
-export function useWikiArticle(id: number | undefined) {
+export function useWikiArticle(id: string | undefined) {
   return useQuery<WikiArticleDetail>({
     queryKey: ['wiki', id],
     queryFn: async () => {
@@ -61,7 +61,7 @@ export function useWikiArticle(id: number | undefined) {
   })
 }
 
-export function useCreateWikiArticle(campaignId: number) {
+export function useCreateWikiArticle(campaignId: string) {
   const queryClient = useQueryClient()
   return useMutation<WikiArticle, Error, Omit<WikiArticle, 'id' | 'created_at' | 'updated_at'>>({
     mutationFn: async (body) => {
@@ -74,12 +74,12 @@ export function useCreateWikiArticle(campaignId: number) {
   })
 }
 
-export function useUpdateWikiArticle(campaignId: number) {
+export function useUpdateWikiArticle(campaignId: string) {
   const queryClient = useQueryClient()
   return useMutation<
     WikiArticle,
     Error,
-    { id: number; title: string; category: string; is_stub: boolean; image_url: string | null; tags: string[] | null; public_content: string; private_content: string }
+    { id: string; title: string; category: string; is_stub: boolean; image_url: string | null; tags: string[] | null; public_content: string; private_content: string }
   >({
     mutationFn: async ({ id, ...body }) => {
       const { data } = await apiClient.put<WikiArticle>(`/wiki/${id}`, body)
@@ -92,9 +92,9 @@ export function useUpdateWikiArticle(campaignId: number) {
   })
 }
 
-export function useDeleteWikiArticle(campaignId: number) {
+export function useDeleteWikiArticle(campaignId: string) {
   const queryClient = useQueryClient()
-  return useMutation<void, Error, number>({
+  return useMutation<void, Error, string>({
     mutationFn: async (id) => {
       await apiClient.delete(`/wiki/${id}`)
     },
@@ -104,7 +104,7 @@ export function useDeleteWikiArticle(campaignId: number) {
   })
 }
 
-export function useAddWikiAssociation(articleId: number, campaignId: number) {
+export function useAddWikiAssociation(articleId: string, campaignId: string) {
   const queryClient = useQueryClient()
   return useMutation<WikiAddAssociationResult, Error, WikiAddAssociationRequest>({
     mutationFn: async (body) => {
@@ -121,9 +121,9 @@ export function useAddWikiAssociation(articleId: number, campaignId: number) {
   })
 }
 
-export function useDeleteWikiAssociation(articleId: number, campaignId: number) {
+export function useDeleteWikiAssociation(articleId: string, campaignId: string) {
   const queryClient = useQueryClient()
-  return useMutation<void, Error, number>({
+  return useMutation<void, Error, string>({
     mutationFn: async (associationId) => {
       await apiClient.delete(`/wiki/associations/${associationId}`)
     },
@@ -134,7 +134,7 @@ export function useDeleteWikiAssociation(articleId: number, campaignId: number) 
   })
 }
 
-export function useImportWiki(campaignId: number) {
+export function useImportWiki(campaignId: string) {
   const queryClient = useQueryClient()
   return useMutation<WikiImportResult, Error, WikiImportRequest>({
     mutationFn: async (body) => {
@@ -147,26 +147,28 @@ export function useImportWiki(campaignId: number) {
   })
 }
 
-export async function exportWikiAll(campaignId: number): Promise<void> {
-  const { data } = await apiClient.get<WikiExportResponse>('/wiki/export', {
+export function exportWikiAll(campaignId: string): Promise<void> {
+  return apiClient.get<WikiExportResponse>('/wiki/export', {
     params: { campaign_id: campaignId },
+  }).then(({ data }) => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'wiki-export.json'
+    link.click()
+    URL.revokeObjectURL(url)
   })
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = 'wiki-export.json'
-  link.click()
-  URL.revokeObjectURL(url)
 }
 
-export async function exportWikiArticle(articleId: number, title: string): Promise<void> {
-  const { data } = await apiClient.get<WikiExportResponse>(`/wiki/${articleId}/export`)
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `wiki-${title.toLowerCase().replace(/\s+/g, '-')}.json`
-  link.click()
-  URL.revokeObjectURL(url)
+export function exportWikiArticle(articleId: string, title: string): Promise<void> {
+  return apiClient.get<WikiExportResponse>(`/wiki/${articleId}/export`).then(({ data }) => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `wiki-${title.toLowerCase().replace(/\s+/g, '-')}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+  })
 }
