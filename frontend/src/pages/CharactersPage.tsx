@@ -26,7 +26,7 @@ export function CharactersPage() {
   const [importResult, setImportResult] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  function toggleExpand(id: number) {
+  function toggleExpand(id: string) {
     setExpandedIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
@@ -64,11 +64,11 @@ export function CharactersPage() {
     )
   }
 
-  function handleUpdate(id: number, patch: Partial<Character>) {
+  function handleUpdate(id: string, patch: Partial<Character>) {
     updateCharacter.mutate({ id, ...patch })
   }
 
-  function handleDelete(id: number) {
+  function handleDelete(id: string) {
     deleteCharacter.mutate(id, {
       onSuccess: () => {
         setDeleteConfirmId(null)

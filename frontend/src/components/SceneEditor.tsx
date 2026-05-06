@@ -458,7 +458,7 @@ export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles =
           </div>,
           document.body,
         )}
-      {explorerOpen && campaignIdRef.current > 0 &&
+      {explorerOpen && campaignIdRef.current &&
         createPortal(
           <WikiExplorerModal
             campaignId={campaignIdRef.current}
@@ -467,7 +467,7 @@ export function SceneEditor({ content, onSave, onSelectSlashItem, wikiArticles =
           />,
           document.body,
         )}
-      {nameModalOpen && campaignIdRef.current > 0 &&
+      {nameModalOpen && campaignIdRef.current &&
         createPortal(
           <NameGeneratorModal
             campaignId={campaignIdRef.current}
