@@ -28,7 +28,7 @@ export function WikiArticlePage() {
   }
 
   function handleDelete() {
-    deleteArticle.mutate(articleId, {
+    deleteArticle.mutate(articleId!, {
       onSuccess: () => navigate(`/campaigns/${campaignId}/wiki`),
     })
   }

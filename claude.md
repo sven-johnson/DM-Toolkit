@@ -15,8 +15,12 @@ A Dungeon Master's toolkit for D&D sessions. Local server accessible from other 
 - API: RESTful, versioned under /api/v1/
 - All async where applicable
 
+## React / TypeScript Patterns
+- `useParams` returns `string | undefined` for all values. Always use `!` non-null assertions when passing params to hooks or functions that require `string` (e.g. `useWikiArticle(articleId!)`, `mutate(articleId!)`). Hooks that intentionally accept optional IDs (like `useCharacters(campaignId?)`) are the exception and don't need `!`.
+- All entity IDs are UUIDs stored as `string` (VARCHAR 36) — never use `number` for IDs anywhere in the frontend.
+
 ## Key Decisions
-- [Add decisions here as you make them]
+- All primary keys are UUIDs (string), migrated from integer auto-increment in revision 0008.
 
 ## What NOT to do
 - Don't use Create React App

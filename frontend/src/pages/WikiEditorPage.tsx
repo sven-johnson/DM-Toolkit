@@ -84,7 +84,7 @@ export function WikiEditorPage() {
       )
     } else {
       createArticle.mutate(
-        { ...payload, campaign_id: campaignId },
+        { ...payload, campaign_id: campaignId! },
         { onSuccess: (created) => navigate(`/campaigns/${campaignId}/wiki/${created.id}`) },
       )
     }
