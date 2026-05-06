@@ -413,7 +413,7 @@ export function SessionDetailPage() {
 
       <WikiArticleModal
         articleId={wikiModalId}
-        campaignId={campaignId}
+        campaignId={campaignId!}
         onClose={() => setWikiModalId(null)}
         onNavigate={(id) => setWikiModalId(id)}
       />

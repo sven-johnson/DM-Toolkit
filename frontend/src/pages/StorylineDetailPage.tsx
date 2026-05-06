@@ -74,7 +74,7 @@ export function StorylineDetailPage() {
       try {
         const parsed = JSON.parse(ev.target?.result as string) as StorylineImportRequest
         importStorylines.mutate(
-          { ...parsed, campaign_id: campaignId },
+          { ...parsed, campaign_id: campaignId! },
           {
             onSuccess: (result) => {
               const parts = [
@@ -404,7 +404,7 @@ export function StorylineDetailPage() {
 
       <WikiArticleModal
         articleId={wikiModalId}
-        campaignId={campaignId}
+        campaignId={campaignId!}
         onClose={() => setWikiModalId(null)}
         onNavigate={(id) => setWikiModalId(id)}
       />
