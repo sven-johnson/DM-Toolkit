@@ -11,8 +11,8 @@ export function WikiArticlePage() {
   }>()
   const navigate = useNavigate()
 
-  const { data: article, isLoading } = useWikiArticle(articleId)
-  const deleteArticle = useDeleteWikiArticle(campaignId)
+  const { data: article, isLoading } = useWikiArticle(articleId!)
+  const deleteArticle = useDeleteWikiArticle(campaignId!)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [imageOpen, setImageOpen] = useState(false)
@@ -21,7 +21,7 @@ export function WikiArticlePage() {
     if (!article) return
     setExporting(true)
     try {
-      await exportWikiArticle(articleId, article.title)
+      await exportWikiArticle(articleId!, article.title)
     } finally {
       setExporting(false)
     }
