@@ -1,12 +1,10 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useCampaignIdMaybe } from '../context/CampaignContext'
 
 export function Nav() {
   const location = useLocation()
   const navigate = useNavigate()
-
-  // Extract campaignId from URL without relying on useParams (Nav is outside <Routes>)
-  const campaignMatch = location.pathname.match(/^\/campaigns\/(\d+)/)
-  const campaignId = campaignMatch ? campaignMatch[1] : null
+  const campaignId = useCampaignIdMaybe()
 
   function isActive(path: string): boolean {
     return location.pathname.startsWith(path)
@@ -25,26 +23,26 @@ export function Nav() {
         {campaignId && (
           <div className="nav-links">
             <Link
-              to={`/campaigns/${campaignId}/sessions`}
-              className={`nav-link${isActive(`/campaigns/${campaignId}/sessions`) ? ' active' : ''}`}
+              to="/sessions"
+              className={`nav-link${isActive('/sessions') ? ' active' : ''}`}
             >
               Sessions
             </Link>
             <Link
-              to={`/campaigns/${campaignId}/storylines`}
-              className={`nav-link${isActive(`/campaigns/${campaignId}/storylines`) ? ' active' : ''}`}
+              to="/storylines"
+              className={`nav-link${isActive('/storylines') ? ' active' : ''}`}
             >
               Storylines
             </Link>
             <Link
-              to={`/campaigns/${campaignId}/characters`}
-              className={`nav-link${isActive(`/campaigns/${campaignId}/characters`) ? ' active' : ''}`}
+              to="/characters"
+              className={`nav-link${isActive('/characters') ? ' active' : ''}`}
             >
               Characters
             </Link>
             <Link
-              to={`/campaigns/${campaignId}/wiki`}
-              className={`nav-link${isActive(`/campaigns/${campaignId}/wiki`) ? ' active' : ''}`}
+              to="/wiki"
+              className={`nav-link${isActive('/wiki') ? ' active' : ''}`}
             >
               Wiki
             </Link>

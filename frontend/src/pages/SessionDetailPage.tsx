@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { useCampaignId } from '../context/CampaignContext'
 import {
   useSession,
   useUpdateSession,
@@ -33,10 +34,8 @@ interface PendingCheck {
 }
 
 export function SessionDetailPage() {
-  const { campaignId, sessionId } = useParams<{
-    campaignId: string
-    sessionId: string
-  }>()
+  const { sessionId } = useParams<{ sessionId: string }>()
+  const campaignId = useCampaignId()
   const queryKey = ['session', sessionId]
 
   const { data: session, isLoading, isError } = useSession(campaignId!, sessionId!)
@@ -217,7 +216,7 @@ export function SessionDetailPage() {
               {activeStoryline ? (
                 <>
                   <span className="storyline-indicator">📖</span>
-                  <Link to={`/campaigns/${campaignId}/storylines/${activeStoryline.id}`}>
+                  <Link to={`/storylines/${activeStoryline.id}`}>
                     {activeStoryline.title}
                   </Link>
                 </>
@@ -286,7 +285,7 @@ export function SessionDetailPage() {
           {characters.length === 0 ? (
             <p className="empty-state" style={{ fontSize: '0.85rem' }}>
               No characters —{' '}
-              <Link to={`/campaigns/${campaignId}/characters`}>go to Characters page</Link> to add
+              <Link to={`/characters`}>go to Characters page</Link> to add
               your party.
             </p>
           ) : (

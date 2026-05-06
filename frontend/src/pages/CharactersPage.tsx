@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useCampaignId } from '../context/CampaignContext'
 import type { Character } from '../types'
 import { ABILITIES, SKILLS, SAVES, calcModifier, formatModifier } from '../constants/dnd'
 import {
@@ -11,7 +11,7 @@ import {
 } from '../hooks/useCharacters'
 
 export function CharactersPage() {
-  const { campaignId } = useParams<{ campaignId: string }>()
+  const campaignId = useCampaignId()
   const { data: characters = [], isLoading } = useCharacters(campaignId)
   const createCharacter = useCreateCharacter(campaignId!)
   const updateCharacter = useUpdateCharacter(campaignId!)

@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useCampaignId } from '../context/CampaignContext'
 import { useCreateSession, useDeleteSession, useSessions } from '../hooks/useSessions'
 import { useCampaignStorylines } from '../hooks/useCampaigns'
 
 export function SessionsPage() {
   const navigate = useNavigate()
-  const { campaignId } = useParams<{ campaignId: string }>()
+  const campaignId = useCampaignId()
 
   const { data: sessions, isLoading, isError } = useSessions(campaignId!)
   const { data: storylines = [] } = useCampaignStorylines(campaignId!)
@@ -29,7 +30,7 @@ export function SessionsPage() {
           setNewTitle('')
           setSelectedStorylineId('')
           setCreating(false)
-          navigate(`/campaigns/${campaignId}/sessions/${session.id}`)
+          navigate(`/sessions/${session.id}`)
         },
       },
     )
@@ -86,7 +87,7 @@ export function SessionsPage() {
         {sessions?.map((session) => (
           <div key={session.id} className="session-card">
             <Link
-              to={`/campaigns/${campaignId}/sessions/${session.id}`}
+              to={`/sessions/${session.id}`}
               className="session-link"
             >
               <span className="session-title">{session.title}</span>

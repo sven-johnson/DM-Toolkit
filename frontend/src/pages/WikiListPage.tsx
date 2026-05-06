@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useCampaignId } from '../context/CampaignContext'
 import { CATEGORY_COLORS, CATEGORY_LABELS, WIKI_CATEGORIES, type WikiCategory } from '../constants/wiki'
 import { exportWikiAll, useImportWiki, useWikiArticles } from '../hooks/useWiki'
 import type { WikiArticle, WikiImportRequest } from '../types'
@@ -11,12 +12,11 @@ import type { WikiArticle, WikiImportRequest } from '../types'
 interface WikiCategorySectionProps {
   category: WikiCategory
   articles: WikiArticle[]
-  campaignId: string
   collapsed: boolean
   onToggle: () => void
 }
 
-function WikiCategorySection({ category, articles, campaignId, collapsed, onToggle }: WikiCategorySectionProps) {
+function WikiCategorySection({ category, articles, collapsed, onToggle }: WikiCategorySectionProps) {
   const color = CATEGORY_COLORS[category]
   const label = CATEGORY_LABELS[category]
 
@@ -45,7 +45,7 @@ function WikiCategorySection({ category, articles, campaignId, collapsed, onTogg
           {articles.map((article) => (
             <Link
               key={article.id}
-              to={`/campaigns/${campaignId}/wiki/${article.id}`}
+              to={`/wiki/${article.id}`}
               className="wiki-card"
             >
               {article.image_url && (
@@ -85,7 +85,7 @@ function WikiCategorySection({ category, articles, campaignId, collapsed, onTogg
 // ---------------------------------------------------------------------------
 
 export function WikiListPage() {
-  const { campaignId } = useParams<{ campaignId: string }>()
+  const campaignId = useCampaignId()
   const navigate = useNavigate()
 
   const [filterCategory, setFilterCategory] = useState('')
@@ -190,7 +190,7 @@ export function WikiListPage() {
           <button
             className="btn-primary"
             type="button"
-            onClick={() => navigate(`/campaigns/${campaignId}/wiki/new`)}
+            onClick={() => navigate('/wiki/new')}
           >
             + New Article
           </button>
@@ -260,7 +260,6 @@ export function WikiListPage() {
             key={category}
             category={category}
             articles={catArticles}
-            campaignId={campaignId!}
             collapsed={collapsedCategories.has(category)}
             onToggle={() => toggleCategory(category)}
           />

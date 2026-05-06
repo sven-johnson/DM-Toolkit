@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useSetCampaignId } from '../context/CampaignContext'
 import {
   useCampaigns,
   useCreateCampaign,
@@ -9,6 +10,7 @@ import {
 
 export function CampaignsPage() {
   const navigate = useNavigate()
+  const setCampaignId = useSetCampaignId()
   const { data: campaigns, isLoading, isError } = useCampaigns()
   const createCampaign = useCreateCampaign()
   const updateCampaign = useUpdateCampaign()
@@ -28,7 +30,8 @@ export function CampaignsPage() {
         onSuccess: (campaign) => {
           setNewName('')
           setCreating(false)
-          navigate(`/campaigns/${campaign.id}/sessions`)
+          setCampaignId(campaign.id)
+          navigate('/sessions')
         },
       },
     )
@@ -93,7 +96,7 @@ export function CampaignsPage() {
               <button
                 className="campaign-select-btn"
                 type="button"
-                onClick={() => navigate(`/campaigns/${campaign.id}/sessions`)}
+                onClick={() => { setCampaignId(campaign.id); navigate('/sessions') }}
               >
                 <span className="campaign-name">{campaign.name}</span>
                 <span className="campaign-select-hint">Click to enter →</span>

@@ -1,14 +1,13 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useCampaignId } from '../context/CampaignContext'
 import { MarkdownBody } from '../components/MarkdownBody'
 import { CATEGORY_COLORS, CATEGORY_LABELS, type WikiCategory } from '../constants/wiki'
 import { exportWikiArticle, useDeleteWikiArticle, useWikiArticle } from '../hooks/useWiki'
 
 export function WikiArticlePage() {
-  const { campaignId, articleId } = useParams<{
-    campaignId: string
-    articleId: string
-  }>()
+  const { articleId } = useParams<{ articleId: string }>()
+  const campaignId = useCampaignId()
   const navigate = useNavigate()
 
   const { data: article, isLoading } = useWikiArticle(articleId!)
@@ -29,7 +28,7 @@ export function WikiArticlePage() {
 
   function handleDelete() {
     deleteArticle.mutate(articleId!, {
-      onSuccess: () => navigate(`/campaigns/${campaignId}/wiki`),
+      onSuccess: () => navigate('/wiki'),
     })
   }
 
@@ -43,7 +42,7 @@ export function WikiArticlePage() {
     <div className="page">
       <div className="page-header" style={{ alignItems: 'flex-start', gap: '0.5rem', flexWrap: 'wrap' }}>
         <Link
-          to={`/campaigns/${campaignId}/wiki`}
+          to={`/wiki`}
           className="nav-link"
           style={{ fontSize: '0.875rem', marginTop: '0.3rem' }}
         >
@@ -60,7 +59,7 @@ export function WikiArticlePage() {
             {exporting ? 'Exporting…' : 'Export'}
           </button>
           <Link
-            to={`/campaigns/${campaignId}/wiki/${articleId}/edit`}
+            to={`/wiki/${articleId}/edit`}
             className="btn-ghost"
           >
             Edit
@@ -147,7 +146,7 @@ export function WikiArticlePage() {
                   {article.associations.map((assoc) => (
                     <Link
                       key={assoc.id}
-                      to={`/campaigns/${campaignId}/wiki/${assoc.other_article_id}`}
+                      to={`/wiki/${assoc.other_article_id}`}
                       className="wiki-assoc-chip"
                     >
                       <span className="wiki-assoc-chip-title">

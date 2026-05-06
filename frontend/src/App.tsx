@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { CampaignProvider, useCampaignIdMaybe } from './context/CampaignContext'
 import { LoginPage } from './pages/LoginPage'
 import { CampaignsPage } from './pages/CampaignsPage'
 import { SessionsPage } from './pages/SessionsPage'
@@ -26,6 +27,12 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function RequireCampaign({ children }: { children: React.ReactNode }) {
+  const campaignId = useCampaignIdMaybe()
+  if (!campaignId) return <Navigate to="/" replace />
+  return <>{children}</>
+}
+
 function AppLayout() {
   const location = useLocation()
   const isLoginPage = location.pathname === '/login'
@@ -44,74 +51,92 @@ function AppLayout() {
           }
         />
         <Route
-          path="/campaigns/:campaignId/sessions"
+          path="/sessions"
           element={
             <RequireAuth>
-              <SessionsPage />
+              <RequireCampaign>
+                <SessionsPage />
+              </RequireCampaign>
             </RequireAuth>
           }
         />
         <Route
-          path="/campaigns/:campaignId/sessions/:sessionId"
+          path="/sessions/:sessionId"
           element={
             <RequireAuth>
-              <SessionDetailPage />
+              <RequireCampaign>
+                <SessionDetailPage />
+              </RequireCampaign>
             </RequireAuth>
           }
         />
         <Route
-          path="/campaigns/:campaignId/storylines"
+          path="/storylines"
           element={
             <RequireAuth>
-              <StorylinesPage />
+              <RequireCampaign>
+                <StorylinesPage />
+              </RequireCampaign>
             </RequireAuth>
           }
         />
         <Route
-          path="/campaigns/:campaignId/storylines/:storylineId"
+          path="/storylines/:storylineId"
           element={
             <RequireAuth>
-              <StorylineDetailPage />
+              <RequireCampaign>
+                <StorylineDetailPage />
+              </RequireCampaign>
             </RequireAuth>
           }
         />
         <Route
-          path="/campaigns/:campaignId/characters"
+          path="/characters"
           element={
             <RequireAuth>
-              <CharactersPage />
+              <RequireCampaign>
+                <CharactersPage />
+              </RequireCampaign>
             </RequireAuth>
           }
         />
         <Route
-          path="/campaigns/:campaignId/wiki"
+          path="/wiki"
           element={
             <RequireAuth>
-              <WikiListPage />
+              <RequireCampaign>
+                <WikiListPage />
+              </RequireCampaign>
             </RequireAuth>
           }
         />
         <Route
-          path="/campaigns/:campaignId/wiki/new"
+          path="/wiki/new"
           element={
             <RequireAuth>
-              <WikiEditorPage />
+              <RequireCampaign>
+                <WikiEditorPage />
+              </RequireCampaign>
             </RequireAuth>
           }
         />
         <Route
-          path="/campaigns/:campaignId/wiki/:articleId/edit"
+          path="/wiki/:articleId/edit"
           element={
             <RequireAuth>
-              <WikiEditorPage />
+              <RequireCampaign>
+                <WikiEditorPage />
+              </RequireCampaign>
             </RequireAuth>
           }
         />
         <Route
-          path="/campaigns/:campaignId/wiki/:articleId"
+          path="/wiki/:articleId"
           element={
             <RequireAuth>
-              <WikiArticlePage />
+              <RequireCampaign>
+                <WikiArticlePage />
+              </RequireCampaign>
             </RequireAuth>
           }
         />
@@ -141,7 +166,9 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <AppLayout />
+        <CampaignProvider>
+          <AppLayout />
+        </CampaignProvider>
       </BrowserRouter>
     </QueryClientProvider>
   )

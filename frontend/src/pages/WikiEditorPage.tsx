@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useCampaignId } from '../context/CampaignContext'
 import { MarkdownBody } from '../components/MarkdownBody'
 import { CATEGORY_COLORS, CATEGORY_LABELS, WIKI_CATEGORIES, type WikiCategory } from '../constants/wiki'
 import {
@@ -12,10 +13,8 @@ import {
 } from '../hooks/useWiki'
 
 export function WikiEditorPage() {
-  const { campaignId, articleId } = useParams<{
-    campaignId: string
-    articleId?: string
-  }>()
+  const { articleId } = useParams<{ articleId?: string }>()
+  const campaignId = useCampaignId()
   const isEditing = articleId !== undefined
   const navigate = useNavigate()
 
@@ -80,12 +79,12 @@ export function WikiEditorPage() {
     if (isEditing && articleId !== undefined) {
       updateArticle.mutate(
         { id: articleId, ...payload },
-        { onSuccess: () => navigate(`/campaigns/${campaignId}/wiki/${articleId}`) },
+        { onSuccess: () => navigate(`/wiki/${articleId}`) },
       )
     } else {
       createArticle.mutate(
         { ...payload, campaign_id: campaignId! },
-        { onSuccess: (created) => navigate(`/campaigns/${campaignId}/wiki/${created.id}`) },
+        { onSuccess: (created) => navigate(`/wiki/${created.id}`) },
       )
     }
   }
@@ -117,7 +116,7 @@ export function WikiEditorPage() {
     <div className="page">
       <div className="page-header">
         <Link
-          to={isEditing ? `/campaigns/${campaignId}/wiki/${articleId}` : `/campaigns/${campaignId}/wiki`}
+          to={isEditing ? `/wiki/${articleId}` : `/wiki`}
           className="nav-link"
           style={{ fontSize: '0.875rem' }}
         >
@@ -267,7 +266,7 @@ export function WikiEditorPage() {
             {saving ? 'Saving…' : isEditing ? 'Save Changes' : 'Create Article'}
           </button>
           <Link
-            to={isEditing ? `/campaigns/${campaignId}/wiki/${articleId}` : `/campaigns/${campaignId}/wiki`}
+            to={isEditing ? `/wiki/${articleId}` : `/wiki`}
             className="btn-ghost"
           >
             Cancel
@@ -291,7 +290,7 @@ export function WikiEditorPage() {
                     {CATEGORY_LABELS[assoc.other_article_category as WikiCategory] ?? assoc.other_article_category}
                   </span>
                   <Link
-                    to={`/campaigns/${campaignId}/wiki/${assoc.other_article_id}`}
+                    to={`/wiki/${assoc.other_article_id}`}
                     style={{ fontWeight: 500, color: 'var(--text-heading)', flex: 1, fontSize: '0.9rem' }}
                   >
                     {assoc.other_article_title}

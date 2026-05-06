@@ -21,6 +21,7 @@ A Dungeon Master's toolkit for D&D sessions. Local server accessible from other 
 
 ## Key Decisions
 - All primary keys are UUIDs (string), migrated from integer auto-increment in revision 0008.
+- Active campaign is stored in `CampaignContext` (persisted to `sessionStorage`), not in the URL. Routes are flat: `/sessions`, `/storylines`, `/characters`, `/wiki`, etc. — no `/campaigns/:campaignId/` prefix. Read campaign ID in pages via `useCampaignId()` from `src/context/CampaignContext.tsx`. Never parse campaign ID from the URL.
 
 ## What NOT to do
 - Don't use Create React App

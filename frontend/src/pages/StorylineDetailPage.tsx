@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { useCampaignId } from '../context/CampaignContext'
 import {
   exportStoryline,
   useImportStorylines,
@@ -33,10 +34,8 @@ interface PendingCheck {
 }
 
 export function StorylineDetailPage() {
-  const { campaignId, storylineId } = useParams<{
-    campaignId: string
-    storylineId: string
-  }>()
+  const { storylineId } = useParams<{ storylineId: string }>()
+  const campaignId = useCampaignId()
   const queryKey = ['storyline', storylineId]
 
   const { data: storyline, isLoading, isError } = useStoryline(campaignId!, storylineId!)

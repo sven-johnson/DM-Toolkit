@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useCampaignId } from '../context/CampaignContext'
 import { useCampaignStorylines } from '../hooks/useCampaigns'
 import { useCreateStoryline, useDeleteStoryline } from '../hooks/useStorylines'
 
 export function StorylinesPage() {
   const navigate = useNavigate()
-  const { campaignId } = useParams<{ campaignId: string }>()
+  const campaignId = useCampaignId()
 
   const { data: storylines = [], isLoading, isError } = useCampaignStorylines(campaignId!)
   const createStoryline = useCreateStoryline(campaignId!)
@@ -23,7 +24,7 @@ export function StorylinesPage() {
         onSuccess: (storyline) => {
           setNewTitle('')
           setCreating(false)
-          navigate(`/campaigns/${campaignId}/storylines/${storyline.id}`)
+          navigate(`/storylines/${storyline.id}`)
         },
       },
     )
