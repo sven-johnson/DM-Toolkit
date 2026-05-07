@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { CampaignProvider, useCampaignIdMaybe } from './context/CampaignContext'
+import { ThemeProvider } from './context/ThemeContext'
 import { LoginPage } from './pages/LoginPage'
 import { CampaignsPage } from './pages/CampaignsPage'
 import { SessionsPage } from './pages/SessionsPage'
@@ -166,9 +167,11 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <CampaignProvider>
-          <AppLayout />
-        </CampaignProvider>
+        <ThemeProvider>
+          <CampaignProvider>
+            <AppLayout />
+          </CampaignProvider>
+        </ThemeProvider>
       </BrowserRouter>
     </QueryClientProvider>
   )

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import apiClient from '../api/client'
+import { useTheme } from '../context/ThemeContext'
 
 // ---------------------------------------------------------------------------
 // JSON schema download helper
@@ -202,6 +203,7 @@ function EditUsernameModal({ currentUsername, onClose, onSaved }: EditUsernameMo
 // ---------------------------------------------------------------------------
 
 export function UserSettingsPage() {
+  const { theme, setTheme } = useTheme()
   const [username, setUsername] = useState('')
   const [loadingUser, setLoadingUser] = useState(true)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -249,6 +251,21 @@ export function UserSettingsPage() {
     <div className="page">
       <div className="page-header">
         <h1>Settings</h1>
+      </div>
+
+      <div className="settings-section">
+        <h2 className="settings-section-title">Appearance</h2>
+        <div className="settings-row">
+          <div className="settings-row-label">Dark mode</div>
+          <label className="toggle-switch">
+            <input
+              type="checkbox"
+              checked={theme === 'dark'}
+              onChange={(e) => setTheme(e.target.checked ? 'dark' : 'light')}
+            />
+            <span className="toggle-track" />
+          </label>
+        </div>
       </div>
 
       <div className="settings-section">

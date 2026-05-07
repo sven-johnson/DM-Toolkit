@@ -153,7 +153,7 @@ export function SceneCard({
   }
 
   return (
-    <div ref={setNodeRef} style={style} className="scene-card">
+    <div ref={setNodeRef} style={style} className="scene-card" data-scene-type={scene.scene_type}>
       <div
         className="scene-header"
         onClick={() => setCollapsed((c) => !c)}
