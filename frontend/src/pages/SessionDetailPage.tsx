@@ -5,6 +5,7 @@ import {
   useSession,
   useUpdateSession,
   useAddNextScene,
+  useNewSceneBelow,
   useRemoveSceneFromSession,
   useReorderSessionScenes,
 } from '../hooks/useSession'
@@ -46,6 +47,7 @@ export function SessionDetailPage() {
 
   const updateSession = useUpdateSession(campaignId!, sessionId!)
   const addNextScene = useAddNextScene(campaignId!, sessionId!)
+  const newSceneBelow = useNewSceneBelow(campaignId!, sessionId!)
   const removeScene = useRemoveSceneFromSession(campaignId!, sessionId!)
   const reorderScenes = useReorderSessionScenes(campaignId!, sessionId!)
   const updateScene = useUpdateScene(queryKey)
@@ -65,6 +67,10 @@ export function SessionDetailPage() {
   const [titleDraft, setTitleDraft] = useState('')
   const [editingRecap, setEditingRecap] = useState(false)
   const [recapDraft, setRecapDraft] = useState('')
+
+  function handleAddSceneBelow(sceneId: string) {
+    newSceneBelow.mutate(sceneId)
+  }
 
   function handleSelectSlashItem(sceneId: string, item: SlashItem, insertLine: () => void) {
     setPendingCheck({ sceneId, type: item.type, subtype: item.subtype, label: item.label })
@@ -177,13 +183,17 @@ export function SessionDetailPage() {
               autoFocus
             />
           ) : (
-            <h1
-              onClick={() => { setTitleDraft(session.title); setEditingTitle(true) }}
-              title="Click to edit title"
-              style={{ cursor: 'pointer' }}
-            >
-              {session.title}
-            </h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <h1 style={{ margin: 0 }}>{session.title}</h1>
+              <button
+                className="btn-icon"
+                type="button"
+                onClick={() => { setTitleDraft(session.title); setEditingTitle(true) }}
+                title="Rename session"
+              >
+                ✎
+              </button>
+            </div>
           )}
           {session.date && <span className="session-date">{session.date}</span>}
         </div>
@@ -208,6 +218,7 @@ export function SessionDetailPage() {
             wikiArticles={wikiArticles}
             onWikiLinkClick={(id) => setWikiModalId(id)}
             campaignId={campaignId}
+            onAddSceneBelow={handleAddSceneBelow}
           />
 
           {/* Active storyline bar */}
@@ -412,7 +423,6 @@ export function SessionDetailPage() {
 
       <WikiArticleModal
         articleId={wikiModalId}
-        campaignId={campaignId!}
         onClose={() => setWikiModalId(null)}
         onNavigate={(id) => setWikiModalId(id)}
       />

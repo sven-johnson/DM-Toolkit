@@ -65,6 +65,8 @@ export function SceneCard({
   campaignId,
   onAddSceneBelow,
 }: Props) {
+  const TITLE_MAX = 255
+
   const [collapsed, setCollapsed] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState(scene.title)
@@ -96,11 +98,12 @@ export function SceneCard({
   }
 
   function commitTitle() {
+    const trimmed = titleDraft.trim().slice(0, TITLE_MAX)
     setEditingTitle(false)
-    const trimmed = titleDraft.trim()
+    setTitleDraft(trimmed)
     if (trimmed && trimmed !== scene.title) {
       onUpdate(scene.id, { title: trimmed })
-    } else {
+    } else if (!trimmed) {
       setTitleDraft(scene.title)
     }
   }
@@ -169,99 +172,50 @@ export function SceneCard({
           ⠿
         </span>
 
-        {editingTitle ? (
-          <input
-            ref={titleRef}
-            className="scene-title-input"
-            value={titleDraft}
-            onChange={(e) => setTitleDraft(e.target.value)}
-            onBlur={commitTitle}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') commitTitle()
-              if (e.key === 'Escape') {
-                setTitleDraft(scene.title)
-                setEditingTitle(false)
-              }
-            }}
-            onClick={(e) => e.stopPropagation()}
-            autoFocus
-          />
-        ) : (
-          <span
-            className="scene-title"
-            onClick={(e) => { e.stopPropagation(); setEditingTitle(true) }}
-            title="Click to edit title"
-          >
-            {scene.title}
-          </span>
-        )}
-
-        <div className="scene-music-cue" onClick={(e) => e.stopPropagation()}>
-          <span className="scene-music-label">Music Cue</span>
-          <button
-            className="btn-icon scene-music-play"
-            type="button"
-            disabled={!musicCue}
-            onClick={() => { if (musicCue) window.open(musicCue, '_blank') }}
-            title={musicCue ? 'Play music cue' : 'No music cue set'}
-          >
-            ▶
-          </button>
-          {(!musicCue || editingCue) ? (
-            <input
-              className="input scene-music-input"
-              type="url"
-              placeholder="Paste link…"
-              defaultValue={musicCue}
-              key={editingCue ? 'edit' : 'new'}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  const val = (e.target as HTMLInputElement).value.trim()
-                  setMusicCue(val)
-                  setEditingCue(false)
-                  onUpdate(scene.id, { music_cue: val || null })
-                }
-                if (e.key === 'Escape' && editingCue) {
-                  setEditingCue(false)
-                }
-              }}
-              onBlur={(e) => {
-                const val = e.target.value.trim()
-                setMusicCue(val)
-                setEditingCue(false)
-                onUpdate(scene.id, { music_cue: val || null })
-              }}
-            />
+        <div className="scene-title-area">
+          {editingTitle ? (
+            <div style={{ width: '90%' }} onClick={(e) => e.stopPropagation()}>
+              <input
+                ref={titleRef}
+                className="scene-title-input"
+                value={titleDraft}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                onBlur={commitTitle}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitTitle()
+                  if (e.key === 'Escape') {
+                    setTitleDraft(scene.title)
+                    setEditingTitle(false)
+                  }
+                }}
+                autoFocus
+              />
+              {titleDraft.length > TITLE_MAX && (
+                <div style={{ color: 'var(--danger)', fontSize: '0.75rem', marginTop: '0.2rem', whiteSpace: 'nowrap' }}>
+                  Maximum title length: {TITLE_MAX}
+                </div>
+              )}
+            </div>
           ) : (
-            <button
-              className="btn-icon"
-              type="button"
-              onClick={() => setEditingCue(true)}
-              title="Edit music cue"
+            <span
+              className="scene-title"
+              onClick={(e) => { e.stopPropagation(); setTitleDraft(scene.title); setEditingTitle(true) }}
+              title="Click to edit title"
             >
-              ✎
-            </button>
+              {scene.title}
+            </span>
           )}
         </div>
 
-        <div className="scene-header-divider" />
-
-        <select
-          className="input scene-type-select"
-          value={scene.scene_type}
-          onChange={(e) => onUpdate(scene.id, { scene_type: e.target.value })}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <option value="story">Story</option>
-          <option value="puzzle">Puzzle</option>
-          <option value="combat">Combat</option>
-          <option value="shop">Shop</option>
-        </select>
-
-        <div className="scene-header-divider" />
-
         <div className="scene-actions" onClick={(e) => e.stopPropagation()}>
-          <span className="scene-expand-indicator">{collapsed ? '▶' : '▼'}</span>
+          <button
+            className="btn-icon scene-expand-indicator"
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setCollapsed((c) => !c) }}
+            title={collapsed ? 'Expand' : 'Collapse'}
+          >
+            {collapsed ? '▶' : '▼'}
+          </button>
           <button
             className="btn-icon btn-danger"
             onClick={() => onDelete(scene.id)}
@@ -269,6 +223,69 @@ export function SceneCard({
           >
             ✕
           </button>
+        </div>
+
+        <div className="scene-header-controls" onClick={(e) => e.stopPropagation()}>
+          <div className="scene-music-cue">
+            <span className="scene-music-label">Music Cue</span>
+            <button
+              className="btn-icon scene-music-play"
+              type="button"
+              disabled={!musicCue}
+              onClick={() => { if (musicCue) window.open(musicCue, '_blank') }}
+              title={musicCue ? 'Play music cue' : 'No music cue set'}
+            >
+              ▶
+            </button>
+            {(!musicCue || editingCue) ? (
+              <input
+                className="input scene-music-input"
+                type="url"
+                placeholder="Paste link…"
+                defaultValue={musicCue}
+                key={editingCue ? 'edit' : 'new'}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const val = (e.target as HTMLInputElement).value.trim()
+                    setMusicCue(val)
+                    setEditingCue(false)
+                    onUpdate(scene.id, { music_cue: val || null })
+                  }
+                  if (e.key === 'Escape' && editingCue) {
+                    setEditingCue(false)
+                  }
+                }}
+                onBlur={(e) => {
+                  const val = e.target.value.trim()
+                  setMusicCue(val)
+                  setEditingCue(false)
+                  onUpdate(scene.id, { music_cue: val || null })
+                }}
+              />
+            ) : (
+              <button
+                className="btn-icon"
+                type="button"
+                onClick={() => setEditingCue(true)}
+                title="Edit music cue"
+              >
+                ✎
+              </button>
+            )}
+          </div>
+
+          <div className="scene-header-divider" />
+
+          <select
+            className="input scene-type-select"
+            value={scene.scene_type}
+            onChange={(e) => onUpdate(scene.id, { scene_type: e.target.value })}
+          >
+            <option value="story">Story</option>
+            <option value="puzzle">Puzzle</option>
+            <option value="combat">Combat</option>
+            <option value="shop">Shop</option>
+          </select>
         </div>
       </div>
 

@@ -50,6 +50,21 @@ export function useAddNextScene(campaignId: string, sessionId: string) {
   })
 }
 
+export function useNewSceneBelow(campaignId: string, sessionId: string) {
+  const queryClient = useQueryClient()
+  return useMutation<Scene, Error, string>({
+    mutationFn: async (afterSceneId) => {
+      const { data } = await apiClient.post<Scene>(
+        `/campaigns/${campaignId}/sessions/${sessionId}/new-scene-below/${afterSceneId}`,
+      )
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['session', sessionId] })
+    },
+  })
+}
+
 export function useRemoveSceneFromSession(campaignId: string, sessionId: string) {
   const queryClient = useQueryClient()
   return useMutation<void, Error, string>({

@@ -438,6 +438,32 @@ textarea.scene-body-textarea {
 
 .btn-icon.btn-danger:hover { color: var(--danger); background: rgba(224,82,82,0.1); }
 
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  min-width: 140px;
+  z-index: 100;
+  overflow: hidden;
+}
+.dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.85rem;
+  background: transparent;
+  border: none;
+  text-align: left;
+  color: var(--text);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.dropdown-item:hover:not(:disabled) { background: var(--border); }
+.dropdown-item:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* ============================================================
    Login page
    ============================================================ */
@@ -541,6 +567,7 @@ textarea.scene-body-textarea {
 .scene-header {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.5rem;
   padding: 0.625rem 0.75rem;
   border-bottom: 1px solid transparent;
@@ -562,9 +589,17 @@ textarea.scene-body-textarea {
 }
 .drag-handle:active { cursor: grabbing; }
 
-.scene-title {
+.scene-title-area {
   flex: 1;
   min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.scene-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 90%;
   font-weight: 500;
   color: var(--text-heading);
   cursor: pointer;
@@ -625,6 +660,15 @@ input.scene-title-input {
 .scene-expand-indicator {
   color: var(--text-muted);
   font-size: 0.75rem;
+  padding: 0.2rem 0.35rem;
+}
+
+.scene-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  order: 1;
 }
 
 .scene-actions {
@@ -632,6 +676,15 @@ input.scene-title-input {
   align-items: center;
   gap: 0.2rem;
   flex-shrink: 0;
+  order: 2;
+}
+
+@media (max-width: 700px) {
+  .scene-header-controls {
+    order: 10;
+    flex: 0 0 100%;
+    padding-top: 0.25rem;
+  }
 }
 
 .scene-body {

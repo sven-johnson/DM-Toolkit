@@ -182,6 +182,68 @@ def add_next_scene(
     return next_scene
 
 
+@router.post("/{session_id}/new-scene-below/{after_scene_id}", response_model=SceneOut, status_code=status.HTTP_201_CREATED)
+def new_scene_below(
+    session_id: str,
+    after_scene_id: str,
+    db: DBSession = Depends(get_db),
+    _: str = Depends(verify_token),
+) -> Scene:
+    """Create a new scene in the storyline right after after_scene_id, then add it to the session."""
+    session = db.query(Session).filter(Session.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    after_scene = db.query(Scene).filter(Scene.id == after_scene_id).first()
+    if not after_scene:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scene not found")
+
+    # Create new scene in the same storyline
+    new_scene = Scene(
+        id=str(uuid_lib.uuid4()),
+        storyline_id=after_scene.storyline_id,
+        title="New Scene",
+        body="",
+        order_index=0,
+    )
+    db.add(new_scene)
+    db.flush()
+
+    # Reorder storyline scenes: insert new scene right after after_scene
+    storyline_scenes = (
+        db.query(Scene)
+        .filter(Scene.storyline_id == after_scene.storyline_id, Scene.id != new_scene.id)
+        .order_by(Scene.order_index)
+        .all()
+    )
+    idx = next((i for i, s in enumerate(storyline_scenes) if s.id == after_scene_id), len(storyline_scenes) - 1)
+    ordered = storyline_scenes[:idx + 1] + [new_scene] + storyline_scenes[idx + 1:]
+    for i, scene in enumerate(ordered):
+        scene.order_index = i
+
+    # Add new scene to session right after after_scene
+    session_scenes = (
+        db.query(SessionScene)
+        .filter(SessionScene.session_id == session_id)
+        .order_by(SessionScene.order_index)
+        .all()
+    )
+    ss_idx = next((i for i, ss in enumerate(session_scenes) if ss.scene_id == after_scene_id), len(session_scenes) - 1)
+    # Shift order_index for all session scenes after the insertion point
+    for ss in session_scenes[ss_idx + 1:]:
+        ss.order_index += 1
+    new_ss = SessionScene(
+        id=str(uuid_lib.uuid4()),
+        session_id=session_id,
+        scene_id=new_scene.id,
+        order_index=ss_idx + 1,
+    )
+    db.add(new_ss)
+    db.commit()
+    db.refresh(new_scene)
+    return new_scene
+
+
 @router.delete(
     "/{session_id}/scenes/{scene_id}", status_code=status.HTTP_204_NO_CONTENT
 )

@@ -67,7 +67,7 @@ export function StorylinesPage() {
         {storylines.map((sl) => (
           <div key={sl.id} className="session-card">
             <Link
-              to={`/campaigns/${campaignId}/storylines/${sl.id}`}
+              to={`/storylines/${sl.id}`}
               className="session-link"
             >
               <span className="session-title">{sl.title}</span>

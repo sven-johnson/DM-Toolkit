@@ -7,12 +7,11 @@ import { useWikiArticle } from '../hooks/useWiki'
 
 interface Props {
   articleId: string | null
-  campaignId: string
   onClose: () => void
   onNavigate?: (articleId: string) => void
 }
 
-export function WikiArticleModal({ articleId, campaignId, onClose, onNavigate }: Props) {
+export function WikiArticleModal({ articleId, onClose, onNavigate }: Props) {
   const { data: article, isLoading } = useWikiArticle(articleId ?? undefined)
 
   useEffect(() => {
@@ -53,7 +52,7 @@ export function WikiArticleModal({ articleId, campaignId, onClose, onNavigate }:
           <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0 }}>
             {article && (
               <Link
-                to={`/campaigns/${campaignId}/wiki/${article.id}`}
+                to={`/wiki/${article.id}`}
                 className="btn-ghost"
                 style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}
                 onClick={onClose}

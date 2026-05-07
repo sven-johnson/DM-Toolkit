@@ -57,6 +57,7 @@ export function StorylineDetailPage() {
   const [newSceneTitle, setNewSceneTitle] = useState('')
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
+  const [gearOpen, setGearOpen] = useState(false)
   const [wikiModalId, setWikiModalId] = useState<string | null>(null)
   const [pendingCheck, setPendingCheck] = useState<PendingCheck | null>(null)
   const [pendingDc, setPendingDc] = useState(10)
@@ -210,7 +211,7 @@ export function StorylineDetailPage() {
   return (
     <div className="page">
       <div className="page-header">
-<div className="session-meta">
+        <div className="session-meta">
           {editingTitle ? (
             <input
               className="input"
@@ -224,34 +225,23 @@ export function StorylineDetailPage() {
               autoFocus
             />
           ) : (
-            <h1
-              onClick={() => { setTitleDraft(storyline.title); setEditingTitle(true) }}
-              title="Click to edit title"
-              style={{ cursor: 'pointer' }}
-            >
-              {storyline.title}
-            </h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <h1 style={{ margin: 0 }}>{storyline.title}</h1>
+              <button
+                className="btn-icon"
+                type="button"
+                onClick={() => { setTitleDraft(storyline.title); setEditingTitle(true) }}
+                title="Rename storyline"
+              >
+                ✎
+              </button>
+            </div>
           )}
           <span className="session-date" style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
             Storyline · {storyline.scenes.length} scene{storyline.scenes.length !== 1 ? 's' : ''}
           </span>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <button
-            className="btn-ghost"
-            type="button"
-            onClick={() => exportStoryline(campaignId!, storylineId!, storyline?.title ?? 'storyline')}
-          >
-            Export JSON
-          </button>
-          <button
-            className="btn-ghost"
-            type="button"
-            onClick={() => importFileRef.current?.click()}
-            disabled={importStorylines.isPending}
-          >
-            {importStorylines.isPending ? 'Importing…' : 'Import JSON'}
-          </button>
           <input
             ref={importFileRef}
             type="file"
@@ -259,9 +249,39 @@ export function StorylineDetailPage() {
             style={{ display: 'none' }}
             onChange={handleImportFile}
           />
-          <button className="btn-primary" onClick={() => setAddingScene((a) => !a)}>
-            + Add Scene
-          </button>
+          <div style={{ position: 'relative' }}>
+            <button
+              className="btn-ghost"
+              type="button"
+              title="Settings"
+              onClick={() => setGearOpen((o) => !o)}
+            >
+              ⚙
+            </button>
+            {gearOpen && (
+              <div
+                className="dropdown-menu"
+                style={{ right: 0 }}
+                onMouseLeave={() => setGearOpen(false)}
+              >
+                <button
+                  className="dropdown-item"
+                  type="button"
+                  onClick={() => { setGearOpen(false); exportStoryline(campaignId!, storylineId!, storyline?.title ?? 'storyline') }}
+                >
+                  Export JSON
+                </button>
+                <button
+                  className="dropdown-item"
+                  type="button"
+                  disabled={importStorylines.isPending}
+                  onClick={() => { setGearOpen(false); importFileRef.current?.click() }}
+                >
+                  {importStorylines.isPending ? 'Importing…' : 'Import JSON'}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -280,24 +300,6 @@ export function StorylineDetailPage() {
             ✕
           </button>
         </div>
-      )}
-
-      {addingScene && (
-        <form className="create-form" onSubmit={handleAddScene}>
-          <input
-            className="input"
-            placeholder="Scene title"
-            value={newSceneTitle}
-            onChange={(e) => setNewSceneTitle(e.target.value)}
-            autoFocus
-          />
-          <button className="btn-primary" type="submit" disabled={createScene.isPending}>
-            Add
-          </button>
-          <button className="btn-ghost" type="button" onClick={() => setAddingScene(false)}>
-            Cancel
-          </button>
-        </form>
       )}
 
       <div className="session-layout">
@@ -321,6 +323,30 @@ export function StorylineDetailPage() {
             campaignId={campaignId}
             onAddSceneBelow={handleAddSceneBelow}
           />
+
+          {addingScene ? (
+            <form className="create-form" style={{ justifyContent: 'center', marginTop: '1rem' }} onSubmit={handleAddScene}>
+              <input
+                className="input"
+                placeholder="Scene title"
+                value={newSceneTitle}
+                onChange={(e) => setNewSceneTitle(e.target.value)}
+                autoFocus
+              />
+              <button className="btn-primary" type="submit" disabled={createScene.isPending}>
+                Add
+              </button>
+              <button className="btn-ghost" type="button" onClick={() => setAddingScene(false)}>
+                Cancel
+              </button>
+            </form>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
+              <button className="btn-primary" type="button" onClick={() => setAddingScene(true)}>
+                + Add Scene
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -403,7 +429,6 @@ export function StorylineDetailPage() {
 
       <WikiArticleModal
         articleId={wikiModalId}
-        campaignId={campaignId!}
         onClose={() => setWikiModalId(null)}
         onNavigate={(id) => setWikiModalId(id)}
       />
