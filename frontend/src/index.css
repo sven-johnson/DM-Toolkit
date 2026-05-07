@@ -5,7 +5,9 @@
   --bg:          #ffffff;
   --bg-card:     #ffffff;
   --bg-input:    #f3f4f5;
-  --border:      rgba(0,0,0,0);
+  --border:      #d1d5db;
+  --border-scene: rgba(0,0,0,0);
+  --border-character-card: #d1d5db;
   --border-focus:#5b6aff;
   --text:        #000000;
   --text-muted:  #6b7280;
@@ -44,12 +46,14 @@
   --bg-card:     #1a1d24;
   --bg-input:    #0e1015;
   --border:      #2a2d38;
+  --border-scene: rgba(0,0,0,0);
+  --border-character-card: #2a2d38;
   --text:        #e2e2e2;
-  --text-heading:#e8eaf0;
+  --text-heading:#e2e2e2;
 
   --scene-story:   #5D99C1;
   --scene-puzzle:  #8489BA;
-  --scene-combat:  #FF6B35;
+  --scene-combat:  #a34e2f;
   --scene-shop:    #A99844;
 }
 
@@ -228,7 +232,7 @@ a:hover { text-decoration: underline; }
    ============================================================ */
 .character-card {
   background: var(--bg-card);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-character-card);
   border-radius: var(--radius);
   padding: 0.625rem 0.75rem;
   cursor: pointer;
@@ -451,7 +455,7 @@ textarea.scene-body-textarea {
 .btn-icon {
   background: transparent;
   border: none;
-  color: var(--text-muted);
+  color: var(--text-heading);
   cursor: pointer;
   padding: 0.25rem 0.4rem;
   border-radius: var(--radius);
@@ -582,12 +586,13 @@ textarea.scene-body-textarea {
 
 .scene-card {
   background: var(--bg-card);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-scene);
   border-radius: var(--radius);
   overflow: hidden;
   transition: border-color 0.15s;
+  margin-bottom: .3rem;
 }
-.scene-card:hover { border-color: #3a3d4d; }
+/*.scene-card:hover { border-color: #3a3d4d; } */
 
 .scene-header {
   display: flex;
@@ -666,7 +671,7 @@ input.scene-title-input {
 
 .scene-music-label {
   font-size: 0.7rem;
-  color: var(--text-muted);
+  color: var(--text-heading);
   white-space: nowrap;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -674,6 +679,8 @@ input.scene-title-input {
 
 .scene-music-play {
   color: #2dcb3a;
+  background-color: var(--text-heading);
+  margin-left: .35rem;
 }
 .scene-music-play:disabled {
   opacity: 0.3;
@@ -682,13 +689,14 @@ input.scene-title-input {
 
 .scene-music-input {
   width: 8rem;
-  padding: 0.15rem 0.35rem;
+  padding: 0.15rem 0.55rem;
+  margin-left: .35rem;
   font-size: 0.8rem;
   height: auto;
 }
 
 .scene-expand-indicator {
-  color: var(--text-muted);
+  color: var(--text-heading);
   font-size: 0.75rem;
   padding: 0.2rem 0.35rem;
 }
@@ -1617,6 +1625,7 @@ input.scene-title-input {
   font-size: 0.9rem;
   line-height: 1.6;
   color: var(--text);
+  background-color: var(--bg-card);
   cursor: pointer;
   padding: 0.35rem 0.5rem;
   border-radius: var(--radius);

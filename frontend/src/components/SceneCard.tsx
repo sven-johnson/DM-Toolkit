@@ -228,15 +228,16 @@ export function SceneCard({
         <div className="scene-header-controls" onClick={(e) => e.stopPropagation()}>
           <div className="scene-music-cue">
             <span className="scene-music-label">Music Cue</span>
-            <button
-              className="btn-icon scene-music-play"
-              type="button"
-              disabled={!musicCue}
-              onClick={() => { if (musicCue) window.open(musicCue, '_blank') }}
-              title={musicCue ? 'Play music cue' : 'No music cue set'}
-            >
-              ▶
-            </button>
+            {musicCue && (
+              <button
+                className="btn-icon scene-music-play"
+                type="button"
+                onClick={() => window.open(musicCue, '_blank')}
+                title="Play music cue"
+              >
+                ▶
+              </button>
+            )}
             {(!musicCue || editingCue) ? (
               <input
                 className="input scene-music-input"
