@@ -4,10 +4,18 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag (e.g. v0.1.0)'
+        required: true
 
 # Allow creating releases and uploading assets
 permissions:
   contents: write
+
+env:
+  TAG_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
 jobs:
   # ── Job 1: Create a draft release with GitHub-generated notes ─────────────
@@ -24,7 +32,8 @@ jobs:
         with:
           draft: true
           generate_release_notes: true
-          name: "DM Toolkit VTT ${{ github.ref_name }}"
+          tag_name: ${{ env.TAG_NAME }}
+          name: "DM Toolkit VTT ${{ env.TAG_NAME }}"
 
   # ── Job 2: Build matrix (macOS universal + Windows x64) ───────────────────
   build:
@@ -96,8 +105,8 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: ./vtt
-          tagName: ${{ github.ref_name }}
-          releaseName: "DM Toolkit VTT ${{ github.ref_name }}"
+          tagName: ${{ env.TAG_NAME }}
+          releaseName: "DM Toolkit VTT ${{ env.TAG_NAME }}"
           releaseId: ${{ needs.create-release.outputs.release_id }}
           args: ${{ matrix.args }}
 
