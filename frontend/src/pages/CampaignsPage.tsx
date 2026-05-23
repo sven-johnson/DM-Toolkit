@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useCampaignRole, useSetCampaignId, useSetCampaignRole } from '../context/CampaignContext'
+import { useSetCampaignId, useSetCampaignRole } from '../context/CampaignContext'
 import { useCurrentUser } from '../hooks/useCurrentUser'
 import {
   useCampaigns,
@@ -21,7 +21,6 @@ export function CampaignsPage() {
   const navigate = useNavigate()
   const setCampaignId = useSetCampaignId()
   const setCampaignRole = useSetCampaignRole()
-  const currentRole = useCampaignRole()
   const { data: currentUser } = useCurrentUser()
   const { data: campaigns, isLoading, isError } = useCampaigns()
   const createCampaign = useCreateCampaign()
