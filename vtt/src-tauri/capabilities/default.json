@@ -1,0 +1,23 @@
+{
+  "$schema": "https://schemas.tauri.app/config/v1/capability.json",
+  "identifier": "default",
+  "description": "Default capabilities for DM Toolkit VTT",
+  "windows": ["controller", "player"],
+  "permissions": [
+    "core:default",
+    "core:webview:allow-create-webview-window",
+    "core:webview:allow-get-all-webviews",
+    "core:window:allow-available-monitors",
+    "core:window:allow-close",
+    "core:window:allow-set-fullscreen",
+    "core:window:allow-is-fullscreen",
+    "dialog:default",
+    "store:default",
+    "shell:default",
+    "updater:default",
+    "sql:allow-load",
+    "sql:allow-execute",
+    "sql:allow-select",
+    "sql:allow-close"
+  ]
+}

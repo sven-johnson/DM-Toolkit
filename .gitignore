@@ -87,7 +87,9 @@ vtt/src-tauri/icons/android/mipmap-mdpi/ic_launcher_foreground.png
 vtt/src-tauri/icons/android/mipmap-xhdpi/ic_launcher_foreground.png
 vtt/src-tauri/icons/android/mipmap-xxhdpi/ic_launcher_foreground.png
 vtt/src-tauri/icons/android/mipmap-xxxhdpi/ic_launcher_foreground.png
-/vtt
+# VTT (Tauri app) — exclude build artifacts, keep source
+vtt/src-tauri/target/
+vtt/node_modules/
 .github/workflows/build-vtt.yml
 cheatsheets/02-advanced-typescript.ts
 cheatsheets/03-csharp-dotnet.cs
