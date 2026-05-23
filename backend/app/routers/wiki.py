@@ -1,13 +1,14 @@
 import uuid as uuid_lib
+from collections import defaultdict
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session as DBSession
 
-from ..auth import verify_token
+from ..auth import get_current_user, require_campaign_role
 from ..database import get_db
-from ..models import Campaign, WikiArticle, WikiAssociation
+from ..models import Campaign, User, WikiArticle, WikiAssociation
 from ..schemas import (
     WikiAddAssociationRequest,
     WikiAddAssociationResult,
@@ -40,26 +41,27 @@ def _hydrate_associations(
         )
         .all()
     )
+    if not assocs:
+        return []
+
+    other_ids = {
+        assoc.target_article_id if assoc.source_article_id == article.id else assoc.source_article_id
+        for assoc in assocs
+    }
+    others = {
+        a.id: a
+        for a in db.query(WikiArticle).filter(WikiArticle.id.in_(other_ids)).all()
+    }
 
     result = []
     for assoc in assocs:
         if assoc.source_article_id == article.id:
-            other = (
-                db.query(WikiArticle)
-                .filter(WikiArticle.id == assoc.target_article_id)
-                .first()
-            )
-            direction = "from"
             other_id = assoc.target_article_id
+            direction = "from"
         else:
-            other = (
-                db.query(WikiArticle)
-                .filter(WikiArticle.id == assoc.source_article_id)
-                .first()
-            )
-            direction = "to"
             other_id = assoc.source_article_id
-
+            direction = "to"
+        other = others.get(other_id)
         result.append(
             WikiAssociationDisplay(
                 id=assoc.id,
@@ -96,8 +98,9 @@ def _make_snippet(text: str, query: str, radius: int = 90) -> Optional[str]:
 def export_all_wiki(
     campaign_id: str = Query(...),
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> WikiExportResponse:
+    require_campaign_role(campaign_id, user, db, min_role="game_master")
     if not db.query(Campaign).filter(Campaign.id == campaign_id).first():
         raise HTTPException(status_code=404, detail="Campaign not found")
 
@@ -108,20 +111,27 @@ def export_all_wiki(
         .all()
     )
 
+    article_ids = [a.id for a in articles]
+
+    all_assocs = (
+        db.query(WikiAssociation)
+        .filter(WikiAssociation.source_article_id.in_(article_ids))
+        .all()
+    )
+    assocs_by_source: dict[str, list[WikiAssociation]] = defaultdict(list)
+    for assoc in all_assocs:
+        assocs_by_source[assoc.source_article_id].append(assoc)
+
+    target_ids = {a.target_article_id for a in all_assocs}
+    targets: dict[str, WikiArticle] = {}
+    if target_ids:
+        targets = {a.id: a for a in db.query(WikiArticle).filter(WikiArticle.id.in_(target_ids)).all()}
+
     export_articles = []
     for article in articles:
-        outbound = (
-            db.query(WikiAssociation)
-            .filter(WikiAssociation.source_article_id == article.id)
-            .all()
-        )
         assoc_exports = []
-        for assoc in outbound:
-            target = (
-                db.query(WikiArticle)
-                .filter(WikiArticle.id == assoc.target_article_id)
-                .first()
-            )
+        for assoc in assocs_by_source.get(article.id, []):
+            target = targets.get(assoc.target_article_id)
             if target:
                 assoc_exports.append(
                     WikiExportAssociation(
@@ -154,8 +164,9 @@ def export_all_wiki(
 def import_wiki(
     body: WikiImportRequest,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> WikiImportResult:
+    require_campaign_role(body.campaign_id, user, db, min_role="game_master")
     """
     Bulk-import wiki articles and associations from a portable JSON document.
 
@@ -325,8 +336,9 @@ def search_wiki(
     campaign_id: str = Query(...),
     q: str = Query(...),
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> list[WikiSearchResult]:
+    require_campaign_role(campaign_id, user, db)
     if not db.query(Campaign).filter(Campaign.id == campaign_id).first():
         raise HTTPException(status_code=404, detail="Campaign not found")
 
@@ -367,6 +379,13 @@ def search_wiki(
     return results[:20]
 
 
+def _strip_private(article: WikiArticle, role: str | None) -> WikiArticle:
+    """Return the article unchanged for GMs/owners/admins; clear private_content for players."""
+    if role == "player":
+        article.private_content = ""
+    return article
+
+
 @router.get("", response_model=list[WikiArticleOut])
 def list_wiki_articles(
     campaign_id: str = Query(...),
@@ -375,8 +394,9 @@ def list_wiki_articles(
     q: Optional[str] = Query(None),
     stubs: Optional[bool] = Query(None),
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> list[WikiArticle]:
+    role = require_campaign_role(campaign_id, user, db)
     if not db.query(Campaign).filter(Campaign.id == campaign_id).first():
         raise HTTPException(status_code=404, detail="Campaign not found")
 
@@ -391,15 +411,16 @@ def list_wiki_articles(
     if tag:
         tag_lower = tag.lower()
         articles = [a for a in articles if a.tags and any(tag_lower in t.lower() for t in a.tags)]
-    return articles
+    return [_strip_private(a, role) for a in articles]
 
 
 @router.post("", response_model=WikiArticleOut, status_code=status.HTTP_201_CREATED)
 def create_wiki_article(
     body: WikiArticleCreate,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> WikiArticle:
+    require_campaign_role(body.campaign_id, user, db, min_role="game_master")
     if not db.query(Campaign).filter(Campaign.id == body.campaign_id).first():
         raise HTTPException(status_code=404, detail="Campaign not found")
     existing = (
@@ -425,11 +446,13 @@ def create_wiki_article(
 def get_wiki_article(
     article_id: str,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> WikiArticleDetail:
     article = db.query(WikiArticle).filter(WikiArticle.id == article_id).first()
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
+    role = require_campaign_role(article.campaign_id, user, db)
+    _strip_private(article, role)
     article_base = WikiArticleOut.model_validate(article)
     associations = _hydrate_associations(article, db)
     return WikiArticleDetail(**article_base.model_dump(), associations=associations)
@@ -440,11 +463,12 @@ def update_wiki_article(
     article_id: str,
     body: WikiArticleUpdate,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> WikiArticle:
     article = db.query(WikiArticle).filter(WikiArticle.id == article_id).first()
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
+    require_campaign_role(article.campaign_id, user, db, min_role="game_master")
     article.title = body.title
     article.category = body.category
     article.is_stub = body.is_stub
@@ -461,11 +485,12 @@ def update_wiki_article(
 def delete_wiki_article(
     article_id: str,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> None:
     article = db.query(WikiArticle).filter(WikiArticle.id == article_id).first()
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
+    require_campaign_role(article.campaign_id, user, db, min_role="game_master")
     db.delete(article)
     db.commit()
 
@@ -474,29 +499,31 @@ def delete_wiki_article(
 def export_single_article(
     article_id: str,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> WikiExportResponse:
     article = db.query(WikiArticle).filter(WikiArticle.id == article_id).first()
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
+    require_campaign_role(article.campaign_id, user, db, min_role="game_master")
     outbound = (
         db.query(WikiAssociation)
         .filter(WikiAssociation.source_article_id == article_id)
         .all()
     )
     assoc_exports = []
-    for assoc in outbound:
-        target = (
-            db.query(WikiArticle).filter(WikiArticle.id == assoc.target_article_id).first()
-        )
-        if target:
-            assoc_exports.append(
-                WikiExportAssociation(
-                    target_title=target.title,
-                    target_category=target.category,
-                    association_label=assoc.association_label,
+    if outbound:
+        target_ids = {a.target_article_id for a in outbound}
+        targets = {a.id: a for a in db.query(WikiArticle).filter(WikiArticle.id.in_(target_ids)).all()}
+        for assoc in outbound:
+            target = targets.get(assoc.target_article_id)
+            if target:
+                assoc_exports.append(
+                    WikiExportAssociation(
+                        target_title=target.title,
+                        target_category=target.category,
+                        association_label=assoc.association_label,
+                    )
                 )
-            )
     return WikiExportResponse(
         campaign_id=article.campaign_id,
         articles=[
@@ -523,11 +550,12 @@ def add_association(
     article_id: str,
     body: WikiAddAssociationRequest,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> WikiAddAssociationResult:
     article = db.query(WikiArticle).filter(WikiArticle.id == article_id).first()
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
+    require_campaign_role(article.campaign_id, user, db, min_role="game_master")
 
     target = (
         db.query(WikiArticle)
@@ -591,7 +619,7 @@ def add_association(
 def delete_association(
     association_id: str,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> None:
     assoc = (
         db.query(WikiAssociation)
@@ -600,5 +628,8 @@ def delete_association(
     )
     if not assoc:
         raise HTTPException(status_code=404, detail="Association not found")
+    source = db.query(WikiArticle).filter(WikiArticle.id == assoc.source_article_id).first()
+    if source:
+        require_campaign_role(source.campaign_id, user, db, min_role="game_master")
     db.delete(assoc)
     db.commit()

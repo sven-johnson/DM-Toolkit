@@ -33,7 +33,7 @@ def _get_engine():
                 "Copy backend/.env.example to backend/.env and fill in values."
             )
         url = _normalize_url(url)
-        _engine = create_engine(url, pool_pre_ping=True)
+        _engine = create_engine(url, pool_pre_ping=True, pool_recycle=3600)
         _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
     return _engine, _SessionLocal
 

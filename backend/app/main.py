@@ -14,6 +14,9 @@ from .routers.rolls import router as rolls_router
 from .routers.sessions import router as sessions_router
 from .routers.storylines import router as storylines_router
 from .routers.wiki import router as wiki_router
+from .routers.images import router as images_router
+from .routers.admin import router as admin_router
+from .routers.monster_factory import router as monster_factory_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -63,4 +66,7 @@ app.include_router(characters_router, prefix="/characters", tags=["characters"])
 app.include_router(checks_router, tags=["checks"])
 app.include_router(rolls_router, tags=["rolls"])
 app.include_router(wiki_router, prefix="/wiki", tags=["wiki"])
+app.include_router(images_router, prefix="/images", tags=["images"])
 app.include_router(names_router, prefix="/names", tags=["names"])
+app.include_router(admin_router, prefix="/admin", tags=["admin"])
+app.include_router(monster_factory_router, prefix="/monster-factory", tags=["monster-factory"])

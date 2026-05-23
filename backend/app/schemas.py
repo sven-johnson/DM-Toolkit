@@ -53,6 +53,7 @@ class CharacterCreate(BaseModel):
     cha_save: int = 0
     ac: int = 10
     max_hp: int = 1
+    nova_damage: int = 0
 
 
 class CharacterUpdate(BaseModel):
@@ -98,6 +99,7 @@ class CharacterUpdate(BaseModel):
     cha_save: Optional[int] = None
     ac: Optional[int] = None
     max_hp: Optional[int] = None
+    nova_damage: Optional[int] = None
 
 
 class CharacterOut(BaseModel):
@@ -145,6 +147,7 @@ class CharacterOut(BaseModel):
     cha_save: int
     ac: int
     max_hp: int
+    nova_damage: int
 
     model_config = {"from_attributes": True}
 
@@ -407,12 +410,35 @@ class CampaignOut(BaseModel):
     id: str
     name: str
     created_at: datetime
+    my_role: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
 
 class CampaignWithRelations(CampaignOut):
     storylines: list[StorylineOut] = []
+
+
+class CampaignMemberOut(BaseModel):
+    user_id: str
+    username: str
+    role: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class CampaignMemberUpsert(BaseModel):
+    user_id: str
+    role: str  # 'player' | 'game_master' | 'owner'
+
+
+class UserOut(BaseModel):
+    id: str
+    username: str
+    is_admin: bool
+
+    model_config = {"from_attributes": True}
 
 
 # ---------------------------------------------------------------------------
@@ -444,7 +470,9 @@ class TokenResponse(BaseModel):
 
 
 class MeResponse(BaseModel):
+    id: str
     username: str
+    is_admin: bool
 
 
 class UpdateUsernameRequest(BaseModel):

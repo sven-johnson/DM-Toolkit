@@ -1571,6 +1571,71 @@ input.scene-title-input {
   flex-shrink: 0;
 }
 
+.campaign-role-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+  white-space: nowrap;
+}
+
+/* ── Modal ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.5rem;
+  min-width: 340px;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Member management rows ── */
+.member-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.member-row:last-child {
+  border-bottom: none;
+}
+
+.member-username {
+  flex: 1;
+  font-size: 0.875rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ============================================================
    Session detail — storyline bar & recap
    ============================================================ */
@@ -2682,4 +2747,186 @@ input.scene-title-input {
 .name-generator-actions {
   display: flex;
   gap: 0.5rem;
+}
+
+/* ── Download Page ─────────────────────────────────────────────────────── */
+.download-page {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 4rem;
+}
+
+.download-hero {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.download-hero h1 {
+  font-size: 2.8rem;
+  font-weight: 800;
+  letter-spacing: -1px;
+  margin-bottom: 0.75rem;
+}
+
+.download-accent {
+  color: var(--accent);
+}
+
+.download-subtitle {
+  font-size: 1.05rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.download-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+}
+
+.download-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.download-version {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  font-family: var(--mono);
+}
+
+.download-date {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+.download-loading,
+.download-error {
+  text-align: center;
+  padding: 2rem 0;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.download-error {
+  color: var(--danger);
+}
+
+.download-platforms {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.download-btn-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.download-btn {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.download-btn:hover {
+  border-color: var(--accent);
+  background: var(--bg-card);
+}
+
+.download-btn-wrap--disabled .download-btn {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.download-btn-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.download-btn-label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.download-btn-label strong {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.download-btn-label small {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.download-btn-size {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  flex-shrink: 0;
+}
+
+.download-na {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  padding-left: 0.25rem;
+}
+
+.download-notes {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.download-notes h2 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.download-notes-body {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.download-all-link {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.download-all-link a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.download-all-link a:hover {
+  text-decoration: underline;
 }

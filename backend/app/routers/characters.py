@@ -1,3 +1,4 @@
+import asyncio
 import re
 import uuid as uuid_lib
 from typing import Optional
@@ -6,9 +7,9 @@ import fitz  # PyMuPDF
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session as DBSession
 
-from ..auth import verify_token
+from ..auth import get_current_user, require_campaign_role
 from ..database import get_db
-from ..models import Campaign, Character
+from ..models import Campaign, Character, User
 from ..schemas import CharacterCreate, CharacterOut, CharacterUpdate
 
 
@@ -192,8 +193,9 @@ def create_character(
     campaign_id: str,
     body: CharacterCreate,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> Character:
+    require_campaign_role(campaign_id, user, db, min_role="game_master")
     if not db.query(Campaign).filter(Campaign.id == campaign_id).first():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
     character = Character(id=str(uuid_lib.uuid4()), campaign_id=campaign_id, **body.model_dump())
@@ -207,11 +209,12 @@ def create_character(
 def get_character(
     character_id: str,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> Character:
     character = db.query(Character).filter(Character.id == character_id).first()
     if not character:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found")
+    require_campaign_role(character.campaign_id, user, db, min_role="game_master")
     return character
 
 
@@ -220,11 +223,12 @@ def update_character(
     character_id: str,
     body: CharacterUpdate,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> Character:
     character = db.query(Character).filter(Character.id == character_id).first()
     if not character:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found")
+    require_campaign_role(character.campaign_id, user, db, min_role="game_master")
     for key, value in body.model_dump(exclude_none=True).items():
         setattr(character, key, value)
     db.commit()
@@ -236,11 +240,12 @@ def update_character(
 def delete_character(
     character_id: str,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> None:
     character = db.query(Character).filter(Character.id == character_id).first()
     if not character:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found")
+    require_campaign_role(character.campaign_id, user, db, min_role="game_master")
     db.delete(character)
     db.commit()
 
@@ -251,7 +256,7 @@ async def import_character_pdf(
     character_id: Optional[str] = Form(None),
     pdf_file: UploadFile = File(...),
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> Character:
     """
     Parse a D&D Beyond character sheet PDF and create or overwrite a character.
@@ -261,12 +266,13 @@ async def import_character_pdf(
       character_id  – if provided, overwrite that character; else create new
       pdf_file      – the PDF file upload
     """
+    require_campaign_role(campaign_id, user, db, min_role="game_master")
     if not db.query(Campaign).filter(Campaign.id == campaign_id).first():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
 
     contents = await pdf_file.read()
     try:
-        parsed = parse_dnd_beyond_pdf(contents)
+        parsed = await asyncio.to_thread(parse_dnd_beyond_pdf, contents)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

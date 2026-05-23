@@ -67,28 +67,26 @@ def get_session_rolls(
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> list[SessionRollOut]:
-    rolls = (
-        db.query(Roll)
-        .join(Roll.check)
-        .join(Check.scene)
+    rows = (
+        db.query(Roll, Check)
+        .join(Check, Roll.check_id == Check.id)
+        .join(Scene, Check.scene_id == Scene.id)
         .join(SessionScene, SessionScene.scene_id == Scene.id)
         .filter(SessionScene.session_id == session_id)
         .all()
     )
-    result = []
-    for roll in rolls:
-        result.append(
-            SessionRollOut(
-                id=roll.id,
-                check_id=roll.check_id,
-                character_id=roll.character_id,
-                die_result=roll.die_result,
-                check_type=roll.check.check_type,
-                subtype=roll.check.subtype,
-                dc=roll.check.dc,
-            )
+    return [
+        SessionRollOut(
+            id=roll.id,
+            check_id=roll.check_id,
+            character_id=roll.character_id,
+            die_result=roll.die_result,
+            check_type=check.check_type,
+            subtype=check.subtype,
+            dc=check.dc,
         )
-    return result
+        for roll, check in rows
+    ]
 
 
 @router.get("/rolls/history", response_model=list[RollHistoryItem])
@@ -96,35 +94,29 @@ def get_roll_history(
     db: DBSession = Depends(get_db),
     _: str = Depends(verify_token),
 ) -> list[RollHistoryItem]:
-    rolls = (
-        db.query(Roll)
-        .join(Roll.check)
-        .join(Check.scene)
+    rows = (
+        db.query(Roll, Check, Scene, SessionScene, Session)
+        .join(Check, Roll.check_id == Check.id)
+        .join(Scene, Check.scene_id == Scene.id)
         .outerjoin(SessionScene, SessionScene.scene_id == Scene.id)
         .outerjoin(Session, Session.id == SessionScene.session_id)
         .order_by(Session.id.desc(), Scene.id, Check.id, Roll.id)
         .all()
     )
-    result = []
-    for roll in rolls:
-        check = roll.check
-        scene = check.scene
-        session_scene = scene.session_scenes[0] if scene.session_scenes else None
-        session = session_scene.session if session_scene else None
-        result.append(
-            RollHistoryItem(
-                id=roll.id,
-                die_result=roll.die_result,
-                character_id=roll.character_id,
-                check_id=roll.check_id,
-                check_type=check.check_type,
-                subtype=check.subtype,
-                dc=check.dc,
-                character_ids=check.character_ids if check.character_ids else [],
-                scene_id=scene.id,
-                scene_title=scene.title,
-                session_id=session.id if session else None,
-                session_title=session.title if session else None,
-            )
+    return [
+        RollHistoryItem(
+            id=roll.id,
+            die_result=roll.die_result,
+            character_id=roll.character_id,
+            check_id=roll.check_id,
+            check_type=check.check_type,
+            subtype=check.subtype,
+            dc=check.dc,
+            character_ids=check.character_ids if check.character_ids else [],
+            scene_id=scene.id,
+            scene_title=scene.title,
+            session_id=session.id if session else None,
+            session_title=session.title if session else None,
         )
-    return result
+        for roll, check, scene, _ss, session in rows
+    ]

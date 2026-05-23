@@ -2,6 +2,7 @@ export interface Campaign {
   id: string
   name: string
   created_at: string
+  my_role: 'owner' | 'game_master' | 'player' | null
 }
 
 export interface CampaignWithRelations extends Campaign {

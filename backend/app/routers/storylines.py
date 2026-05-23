@@ -1,11 +1,12 @@
 import uuid as uuid_lib
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session as DBSession, selectinload
 
-from ..auth import verify_token
+from ..auth import get_current_user, require_campaign_role
 from ..database import get_db
-from ..models import Check, Scene, SceneEnemy, SceneShopItem, Storyline
+from ..models import Check, Scene, SceneEnemy, SceneShopItem, Storyline, User
 from ..schemas import (
     SceneCreate,
     SceneOut,
@@ -31,10 +32,13 @@ def create_storyline(
     campaign_id: str,
     body: StorylineCreate,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> Storyline:
+    require_campaign_role(campaign_id, user, db, min_role="game_master")
     order_index = (
-        db.query(Storyline).filter(Storyline.campaign_id == campaign_id).count()
+        db.query(func.coalesce(func.max(Storyline.order_index), -1))
+        .filter(Storyline.campaign_id == campaign_id)
+        .scalar() + 1
     )
     storyline = Storyline(
         id=str(uuid_lib.uuid4()),
@@ -98,8 +102,9 @@ def _load_storyline_full(db: DBSession, storyline_id: str) -> Storyline | None:
 def export_storylines(
     campaign_id: str,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> StorylineExportResponse:
+    require_campaign_role(campaign_id, user, db, min_role="game_master")
     storylines = (
         db.query(Storyline)
         .options(
@@ -125,8 +130,9 @@ def import_storylines(
     campaign_id: str,
     body: StorylineImportRequest,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> StorylineImportResult:
+    require_campaign_role(campaign_id, user, db, min_role="game_master")
     storylines_created = 0
     storylines_updated = 0
     scenes_created = 0
@@ -146,9 +152,11 @@ def import_storylines(
                 db.flush()
                 storylines_updated += 1
             else:
-                order_index = db.query(Storyline).filter(
-                    Storyline.campaign_id == campaign_id
-                ).count()
+                order_index = (
+                    db.query(func.coalesce(func.max(Storyline.order_index), -1))
+                    .filter(Storyline.campaign_id == campaign_id)
+                    .scalar() + 1
+                )
                 storyline = Storyline(
                     id=str(uuid_lib.uuid4()),
                     campaign_id=campaign_id,
@@ -184,10 +192,8 @@ def import_storylines(
                         scene.music_cue = imp_sc.music_cue
                         scene.order_index = idx
                         db.flush()
-                        for e in list(scene.enemies):
-                            db.delete(e)
-                        for i in list(scene.shop_items):
-                            db.delete(i)
+                        db.query(SceneEnemy).filter(SceneEnemy.scene_id == scene.id).delete(synchronize_session=False)
+                        db.query(SceneShopItem).filter(SceneShopItem.scene_id == scene.id).delete(synchronize_session=False)
                         db.flush()
                         scenes_updated += 1
                     else:
@@ -248,8 +254,9 @@ def export_storyline(
     campaign_id: str,
     storyline_id: str,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> StorylineExportResponse:
+    require_campaign_role(campaign_id, user, db, min_role="game_master")
     storyline = _load_storyline_full(db, storyline_id)
     if not storyline or storyline.campaign_id != campaign_id:
         raise HTTPException(status_code=404, detail="Storyline not found")
@@ -261,10 +268,12 @@ def export_storyline(
 
 @router.get("/{storyline_id}", response_model=StorylineWithScenes)
 def get_storyline(
+    campaign_id: str,
     storyline_id: str,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> Storyline:
+    require_campaign_role(campaign_id, user, db, min_role="game_master")
     storyline = (
         db.query(Storyline)
         .options(
@@ -288,11 +297,13 @@ def get_storyline(
 
 @router.put("/{storyline_id}", response_model=StorylineOut)
 def update_storyline(
+    campaign_id: str,
     storyline_id: str,
     body: StorylineUpdate,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> Storyline:
+    require_campaign_role(campaign_id, user, db, min_role="game_master")
     storyline = db.query(Storyline).filter(Storyline.id == storyline_id).first()
     if not storyline:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Storyline not found")
@@ -305,10 +316,12 @@ def update_storyline(
 
 @router.delete("/{storyline_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_storyline(
+    campaign_id: str,
     storyline_id: str,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> None:
+    require_campaign_role(campaign_id, user, db, min_role="game_master")
     storyline = db.query(Storyline).filter(Storyline.id == storyline_id).first()
     if not storyline:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Storyline not found")
@@ -322,14 +335,20 @@ def delete_storyline(
     status_code=status.HTTP_201_CREATED,
 )
 def create_scene(
+    campaign_id: str,
     storyline_id: str,
     body: SceneCreate,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> Scene:
+    require_campaign_role(campaign_id, user, db, min_role="game_master")
     if not db.query(Storyline).filter(Storyline.id == storyline_id).first():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Storyline not found")
-    order_index = db.query(Scene).filter(Scene.storyline_id == storyline_id).count()
+    order_index = (
+        db.query(func.coalesce(func.max(Scene.order_index), -1))
+        .filter(Scene.storyline_id == storyline_id)
+        .scalar() + 1
+    )
     scene = Scene(
         id=str(uuid_lib.uuid4()),
         storyline_id=storyline_id,
@@ -344,11 +363,13 @@ def create_scene(
 
 @router.put("/{storyline_id}/scenes/reorder", status_code=status.HTTP_204_NO_CONTENT)
 def reorder_scenes(
+    campaign_id: str,
     storyline_id: str,
     body: SceneReorder,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> None:
+    require_campaign_role(campaign_id, user, db, min_role="game_master")
     scenes = db.query(Scene).filter(Scene.storyline_id == storyline_id).all()
     scene_map = {s.id: s for s in scenes}
     for index, scene_id in enumerate(body.scene_ids):

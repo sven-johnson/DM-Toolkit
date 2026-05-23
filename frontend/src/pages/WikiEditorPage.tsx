@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useCampaignId } from '../context/CampaignContext'
 import { MarkdownBody } from '../components/MarkdownBody'
@@ -11,6 +11,8 @@ import {
   useWikiArticle,
   useWikiArticles,
 } from '../hooks/useWiki'
+import apiClient from '../api/client'
+import { getObjectKeyFromUrl } from '../lib/imageUrl'
 
 export function WikiEditorPage() {
   const { articleId } = useParams<{ articleId?: string }>()
@@ -26,6 +28,9 @@ export function WikiEditorPage() {
   const [category, setCategory] = useState('other')
   const [isStub, setIsStub] = useState(false)
   const [imageUrl, setImageUrl] = useState('')
+  const [imageUploading, setImageUploading] = useState(false)
+  const [imageError, setImageError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [tagsInput, setTagsInput] = useState('')
   const [publicContent, setPublicContent] = useState('')
   const [privateContent, setPrivateContent] = useState('')
@@ -59,6 +64,47 @@ export function WikiEditorPage() {
     (a) => a.title.toLowerCase() === assocTitle.trim().toLowerCase() && a.id !== articleId,
   )
   const willCreateStub = assocTitle.trim() !== '' && !titleMatchInCampaign
+
+  async function handleImageFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''   // reset so the same file can be re-selected
+
+    setImageError(null)
+    setImageUploading(true)
+    try {
+      // Delete the previous R2 image if one exists
+      if (imageUrl) {
+        const oldKey = getObjectKeyFromUrl(imageUrl)
+        if (oldKey) {
+          await apiClient.delete(`/images/${oldKey}`)
+        }
+      }
+
+      const form = new FormData()
+      form.append('file', file)
+      form.append('folder', 'wiki')
+      const { data } = await apiClient.post<{ object_key: string; url: string }>('/images/', form)
+      setImageUrl(data.url)
+    } catch {
+      setImageError('Upload failed — check the file type and try again.')
+    } finally {
+      setImageUploading(false)
+    }
+  }
+
+  async function handleDeleteImage() {
+    const key = getObjectKeyFromUrl(imageUrl)
+    if (key) {
+      try {
+        await apiClient.delete(`/images/${key}`)
+      } catch {
+        // Non-fatal — clear the field regardless
+      }
+    }
+    setImageUrl('')
+    setImageError(null)
+  }
 
   function buildTags(): string[] | null {
     const tags = tagsInput.split(',').map((t) => t.trim()).filter(Boolean)
@@ -152,25 +198,46 @@ export function WikiEditorPage() {
           </div>
         </div>
 
-        {/* Image URL */}
+        {/* Image upload */}
         <div className="wiki-editor-field">
-          <label className="wiki-editor-label">Image URL</label>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <input
-              className="input"
-              style={{ flex: 1 }}
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://…"
-              type="url"
-            />
+          <label className="wiki-editor-label">Image</label>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
             {imageUrl && (
               <img
                 src={imageUrl}
                 alt=""
-                style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--border)', flexShrink: 0 }}
+                style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)', flexShrink: 0 }}
                 onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
               />
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              style={{ display: 'none' }}
+              onChange={handleImageFileChange}
+            />
+            <button
+              type="button"
+              className="btn-ghost"
+              style={{ fontSize: '0.875rem' }}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={imageUploading}
+            >
+              {imageUploading ? 'Uploading…' : imageUrl ? 'Replace Image' : 'Upload Image'}
+            </button>
+            {imageUrl && !imageUploading && (
+              <button
+                type="button"
+                className="btn-ghost"
+                style={{ fontSize: '0.875rem', color: 'var(--danger)' }}
+                onClick={handleDeleteImage}
+              >
+                Delete Image
+              </button>
+            )}
+            {imageError && (
+              <span style={{ fontSize: '0.8rem', color: 'var(--danger)' }}>{imageError}</span>
             )}
           </div>
         </div>

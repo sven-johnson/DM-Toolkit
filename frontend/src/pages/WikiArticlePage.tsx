@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { useCampaignId } from '../context/CampaignContext'
+import { useCampaignId, useCampaignRole } from '../context/CampaignContext'
+import { useCurrentUser } from '../hooks/useCurrentUser'
 import { MarkdownBody } from '../components/MarkdownBody'
 import { CATEGORY_COLORS, CATEGORY_LABELS, type WikiCategory } from '../constants/wiki'
 import { exportWikiArticle, useDeleteWikiArticle, useWikiArticle } from '../hooks/useWiki'
@@ -9,6 +10,10 @@ export function WikiArticlePage() {
   const { articleId } = useParams<{ articleId: string }>()
   const campaignId = useCampaignId()
   const navigate = useNavigate()
+
+  const { data: currentUser } = useCurrentUser()
+  const campaignRole = useCampaignRole()
+  const canEdit = currentUser?.is_admin || campaignRole === 'owner' || campaignRole === 'game_master'
 
   const { data: article, isLoading } = useWikiArticle(articleId!)
   const deleteArticle = useDeleteWikiArticle(campaignId!)
@@ -58,13 +63,12 @@ export function WikiArticlePage() {
           >
             {exporting ? 'Exporting…' : 'Export'}
           </button>
-          <Link
-            to={`/wiki/${articleId}/edit`}
-            className="btn-ghost"
-          >
-            Edit
-          </Link>
-          {deleteConfirm ? (
+          {canEdit && (
+            <Link to={`/wiki/${articleId}/edit`} className="btn-ghost">
+              Edit
+            </Link>
+          )}
+          {canEdit && (deleteConfirm ? (
             <>
               <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', alignSelf: 'center' }}>Delete?</span>
               <button
@@ -92,7 +96,7 @@ export function WikiArticlePage() {
             >
               ✕
             </button>
-          )}
+          ))}
         </div>
       </div>
 

@@ -1,11 +1,12 @@
 import uuid as uuid_lib
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session as DBSession
+from sqlalchemy import func
+from sqlalchemy.orm import Session as DBSession, selectinload
 
 from ..auth import verify_token
 from ..database import get_db
-from ..models import Scene, SceneEnemy, SceneShopItem
+from ..models import Check, Roll, Scene, SceneEnemy, SceneShopItem
 from ..schemas import (
     SceneEnemyCreate,
     SceneEnemyOut,
@@ -42,11 +43,9 @@ def update_scene(
                 status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid scene_type: {new_type}"
             )
         if new_type != "combat":
-            for enemy in scene.enemies:
-                db.delete(enemy)
+            db.query(SceneEnemy).filter(SceneEnemy.scene_id == scene_id).delete(synchronize_session=False)
         if new_type != "shop":
-            for item in scene.shop_items:
-                db.delete(item)
+            db.query(SceneShopItem).filter(SceneShopItem.scene_id == scene_id).delete(synchronize_session=False)
         if new_type != "puzzle":
             scene.puzzle_clues = None
             scene.puzzle_solution = None
@@ -55,7 +54,16 @@ def update_scene(
         setattr(scene, key, value)
 
     db.commit()
-    db.refresh(scene)
+    scene = (
+        db.query(Scene)
+        .options(
+            selectinload(Scene.checks).selectinload(Check.rolls),
+            selectinload(Scene.enemies),
+            selectinload(Scene.shop_items),
+        )
+        .filter(Scene.id == scene_id)
+        .first()
+    )
     return scene
 
 
@@ -91,7 +99,11 @@ def add_enemy(
     scene = db.query(Scene).filter(Scene.id == scene_id).first()
     if not scene:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scene not found")
-    order_index = db.query(SceneEnemy).filter(SceneEnemy.scene_id == scene_id).count()
+    order_index = (
+        db.query(func.coalesce(func.max(SceneEnemy.order_index), -1))
+        .filter(SceneEnemy.scene_id == scene_id)
+        .scalar() + 1
+    )
     enemy = SceneEnemy(
         id=str(uuid_lib.uuid4()),
         scene_id=scene_id,
@@ -163,7 +175,11 @@ def add_shop_item(
     scene = db.query(Scene).filter(Scene.id == scene_id).first()
     if not scene:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scene not found")
-    order_index = db.query(SceneShopItem).filter(SceneShopItem.scene_id == scene_id).count()
+    order_index = (
+        db.query(func.coalesce(func.max(SceneShopItem.order_index), -1))
+        .filter(SceneShopItem.scene_id == scene_id)
+        .scalar() + 1
+    )
     item = SceneShopItem(
         id=str(uuid_lib.uuid4()),
         scene_id=scene_id,

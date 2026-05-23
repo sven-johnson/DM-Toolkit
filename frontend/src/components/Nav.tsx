@@ -1,10 +1,16 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useCampaignIdMaybe } from '../context/CampaignContext'
+import { useCampaignIdMaybe, useCampaignRole } from '../context/CampaignContext'
+import { useCurrentUser } from '../hooks/useCurrentUser'
 
 export function Nav() {
   const location = useLocation()
   const navigate = useNavigate()
   const campaignId = useCampaignIdMaybe()
+  const campaignRole = useCampaignRole()
+  const { data: currentUser } = useCurrentUser()
+
+  const isAdmin = currentUser?.is_admin ?? false
+  const canSeeFullMenu = isAdmin || campaignRole === 'owner' || campaignRole === 'game_master'
 
   function isActive(path: string): boolean {
     return location.pathname.startsWith(path)
@@ -22,24 +28,28 @@ export function Nav() {
 
         {campaignId && (
           <div className="nav-links">
-            <Link
-              to="/sessions"
-              className={`nav-link${isActive('/sessions') ? ' active' : ''}`}
-            >
-              Sessions
-            </Link>
-            <Link
-              to="/storylines"
-              className={`nav-link${isActive('/storylines') ? ' active' : ''}`}
-            >
-              Storylines
-            </Link>
-            <Link
-              to="/characters"
-              className={`nav-link${isActive('/characters') ? ' active' : ''}`}
-            >
-              Characters
-            </Link>
+            {canSeeFullMenu && (
+              <>
+                <Link
+                  to="/sessions"
+                  className={`nav-link${isActive('/sessions') ? ' active' : ''}`}
+                >
+                  Sessions
+                </Link>
+                <Link
+                  to="/storylines"
+                  className={`nav-link${isActive('/storylines') ? ' active' : ''}`}
+                >
+                  Storylines
+                </Link>
+                <Link
+                  to="/characters"
+                  className={`nav-link${isActive('/characters') ? ' active' : ''}`}
+                >
+                  Characters
+                </Link>
+              </>
+            )}
             <Link
               to="/wiki"
               className={`nav-link${isActive('/wiki') ? ' active' : ''}`}
@@ -55,6 +65,13 @@ export function Nav() {
               ← Campaigns
             </Link>
           )}
+          <Link
+            to="/download"
+            className={`nav-link${isActive('/download') ? ' active' : ''}`}
+            title="Download the VTT desktop app"
+          >
+            Download VTT
+          </Link>
           <Link
             to="/settings"
             className={`nav-link nav-settings${isActive('/settings') ? ' active' : ''}`}

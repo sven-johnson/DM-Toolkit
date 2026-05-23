@@ -1,11 +1,12 @@
 import uuid as uuid_lib
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session as DBSession, selectinload
 
-from ..auth import verify_token
+from ..auth import get_current_user, require_campaign_role
 from ..database import get_db
-from ..models import Campaign, Check, Scene, Session, SessionScene, Storyline
+from ..models import Campaign, Check, Scene, Session, SessionScene, Storyline, User
 from ..schemas import (
     SceneOut,
     SceneReorder,
@@ -47,8 +48,9 @@ def create_session(
     campaign_id: str,
     body: SessionCreate,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> Session:
+    require_campaign_role(campaign_id, user, db, min_role="game_master")
     if not db.query(Campaign).filter(Campaign.id == campaign_id).first():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
 
@@ -97,10 +99,12 @@ def create_session(
 
 @router.get("/{session_id}", response_model=SessionWithScenes)
 def get_session(
+    campaign_id: str,
     session_id: str,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> Session:
+    require_campaign_role(campaign_id, user, db, min_role="game_master")
     session = _load_session(session_id, db)
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
@@ -109,11 +113,13 @@ def get_session(
 
 @router.put("/{session_id}", response_model=SessionOut)
 def update_session(
+    campaign_id: str,
     session_id: str,
     body: SessionUpdate,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> Session:
+    require_campaign_role(campaign_id, user, db, min_role="game_master")
     session = db.query(Session).filter(Session.id == session_id).first()
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
@@ -126,10 +132,12 @@ def update_session(
 
 @router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_session(
+    campaign_id: str,
     session_id: str,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> None:
+    require_campaign_role(campaign_id, user, db, min_role="game_master")
     session = db.query(Session).filter(Session.id == session_id).first()
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
@@ -139,10 +147,12 @@ def delete_session(
 
 @router.post("/{session_id}/next-scene", response_model=SceneOut)
 def add_next_scene(
+    campaign_id: str,
     session_id: str,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> Scene:
+    require_campaign_role(campaign_id, user, db, min_role="game_master")
     session = db.query(Session).filter(Session.id == session_id).first()
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
@@ -169,7 +179,11 @@ def add_next_scene(
             detail="No more scenes available in this storyline",
         )
 
-    next_order = db.query(SessionScene).filter(SessionScene.session_id == session_id).count()
+    next_order = (
+        db.query(func.coalesce(func.max(SessionScene.order_index), -1))
+        .filter(SessionScene.session_id == session_id)
+        .scalar() + 1
+    )
     ss = SessionScene(
         id=str(uuid_lib.uuid4()),
         session_id=session_id,
@@ -184,11 +198,13 @@ def add_next_scene(
 
 @router.post("/{session_id}/new-scene-below/{after_scene_id}", response_model=SceneOut, status_code=status.HTTP_201_CREATED)
 def new_scene_below(
+    campaign_id: str,
     session_id: str,
     after_scene_id: str,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> Scene:
+    require_campaign_role(campaign_id, user, db, min_role="game_master")
     """Create a new scene in the storyline right after after_scene_id, then add it to the session."""
     session = db.query(Session).filter(Session.id == session_id).first()
     if not session:
@@ -248,11 +264,13 @@ def new_scene_below(
     "/{session_id}/scenes/{scene_id}", status_code=status.HTTP_204_NO_CONTENT
 )
 def remove_scene_from_session(
+    campaign_id: str,
     session_id: str,
     scene_id: str,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> None:
+    require_campaign_role(campaign_id, user, db, min_role="game_master")
     ss = (
         db.query(SessionScene)
         .filter(
@@ -269,11 +287,13 @@ def remove_scene_from_session(
 
 @router.put("/{session_id}/scenes/reorder", status_code=status.HTTP_204_NO_CONTENT)
 def reorder_scenes(
+    campaign_id: str,
     session_id: str,
     body: SceneReorder,
     db: DBSession = Depends(get_db),
-    _: str = Depends(verify_token),
+    user: User = Depends(get_current_user),
 ) -> None:
+    require_campaign_role(campaign_id, user, db, min_role="game_master")
     session_scenes = (
         db.query(SessionScene).filter(SessionScene.session_id == session_id).all()
     )

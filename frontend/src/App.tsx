@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { CampaignProvider, useCampaignIdMaybe } from './context/CampaignContext'
+import { CampaignProvider, useCampaignIdMaybe, useCampaignRole } from './context/CampaignContext'
+import { useCurrentUser } from './hooks/useCurrentUser'
 import { ThemeProvider } from './context/ThemeContext'
 import { LoginPage } from './pages/LoginPage'
 import { CampaignsPage } from './pages/CampaignsPage'
@@ -14,6 +15,7 @@ import { WikiListPage } from './pages/WikiListPage'
 import { WikiArticlePage } from './pages/WikiArticlePage'
 import { WikiEditorPage } from './pages/WikiEditorPage'
 import { UserSettingsPage } from './pages/UserSettingsPage'
+import { DownloadPage } from './pages/DownloadPage'
 import { Nav } from './components/Nav'
 
 const queryClient = new QueryClient({
@@ -31,6 +33,14 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 function RequireCampaign({ children }: { children: React.ReactNode }) {
   const campaignId = useCampaignIdMaybe()
   if (!campaignId) return <Navigate to="/" replace />
+  return <>{children}</>
+}
+
+function RequireGameMaster({ children }: { children: React.ReactNode }) {
+  const campaignRole = useCampaignRole()
+  const { data: currentUser } = useCurrentUser()
+  const canAccess = currentUser?.is_admin || campaignRole === 'owner' || campaignRole === 'game_master'
+  if (!canAccess) return <Navigate to="/wiki" replace />
   return <>{children}</>
 }
 
@@ -56,7 +66,9 @@ function AppLayout() {
           element={
             <RequireAuth>
               <RequireCampaign>
-                <SessionsPage />
+                <RequireGameMaster>
+                  <SessionsPage />
+                </RequireGameMaster>
               </RequireCampaign>
             </RequireAuth>
           }
@@ -66,7 +78,9 @@ function AppLayout() {
           element={
             <RequireAuth>
               <RequireCampaign>
-                <SessionDetailPage />
+                <RequireGameMaster>
+                  <SessionDetailPage />
+                </RequireGameMaster>
               </RequireCampaign>
             </RequireAuth>
           }
@@ -76,7 +90,9 @@ function AppLayout() {
           element={
             <RequireAuth>
               <RequireCampaign>
-                <StorylinesPage />
+                <RequireGameMaster>
+                  <StorylinesPage />
+                </RequireGameMaster>
               </RequireCampaign>
             </RequireAuth>
           }
@@ -86,7 +102,9 @@ function AppLayout() {
           element={
             <RequireAuth>
               <RequireCampaign>
-                <StorylineDetailPage />
+                <RequireGameMaster>
+                  <StorylineDetailPage />
+                </RequireGameMaster>
               </RequireCampaign>
             </RequireAuth>
           }
@@ -96,7 +114,9 @@ function AppLayout() {
           element={
             <RequireAuth>
               <RequireCampaign>
-                <CharactersPage />
+                <RequireGameMaster>
+                  <CharactersPage />
+                </RequireGameMaster>
               </RequireCampaign>
             </RequireAuth>
           }
@@ -116,7 +136,9 @@ function AppLayout() {
           element={
             <RequireAuth>
               <RequireCampaign>
-                <WikiEditorPage />
+                <RequireGameMaster>
+                  <WikiEditorPage />
+                </RequireGameMaster>
               </RequireCampaign>
             </RequireAuth>
           }
@@ -126,7 +148,9 @@ function AppLayout() {
           element={
             <RequireAuth>
               <RequireCampaign>
-                <WikiEditorPage />
+                <RequireGameMaster>
+                  <WikiEditorPage />
+                </RequireGameMaster>
               </RequireCampaign>
             </RequireAuth>
           }
@@ -157,6 +181,7 @@ function AppLayout() {
             </RequireAuth>
           }
         />
+        <Route path="/download" element={<DownloadPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>

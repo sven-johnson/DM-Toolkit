@@ -71,6 +71,44 @@ def verify_token(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
 
+# Role hierarchy — higher index = more permissions
+ROLE_HIERARCHY = ["player", "game_master", "owner"]
+
+
+def require_campaign_role(
+    campaign_id: str,
+    user: "User",
+    db: "DBSession",
+    min_role: str = "player",
+) -> str | None:
+    """Check user has at least min_role in the campaign.
+
+    Returns the user's role string, or None for admins without explicit membership.
+    Raises 403 if the user is not a member or has insufficient role.
+    """
+    from .models import CampaignMember  # local import avoids circular dependency
+
+    if user.is_admin:
+        member = db.query(CampaignMember).filter(
+            CampaignMember.user_id == user.id,
+            CampaignMember.campaign_id == campaign_id,
+        ).first()
+        return member.role if member else None
+
+    member = db.query(CampaignMember).filter(
+        CampaignMember.user_id == user.id,
+        CampaignMember.campaign_id == campaign_id,
+    ).first()
+
+    if not member:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of this campaign")
+
+    if ROLE_HIERARCHY.index(member.role) < ROLE_HIERARCHY.index(min_role):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+
+    return member.role
+
+
 # ---------------------------------------------------------------------------
 # Imports placed after function definitions to avoid circular-import issues
 # ---------------------------------------------------------------------------
@@ -84,6 +122,20 @@ from .schemas import (  # noqa: E402
     UpdatePasswordRequest,
     UpdateUsernameRequest,
 )
+
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: DBSession = Depends(get_db),
+) -> User:
+    try:
+        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str | None = payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    except JWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    return _get_user(username, db)
 
 
 def _get_user(username: str, db: DBSession) -> "User":
@@ -116,12 +168,8 @@ def login(body: LoginRequest, db: DBSession = Depends(get_db)) -> TokenResponse:
 
 
 @router.get("/me", response_model=MeResponse)
-def get_me(
-    current_username: str = Depends(verify_token),
-    db: DBSession = Depends(get_db),
-) -> MeResponse:
-    user = _get_user(current_username, db)
-    return MeResponse(username=user.username)
+def get_me(user: User = Depends(get_current_user)) -> MeResponse:
+    return MeResponse(id=user.id, username=user.username, is_admin=user.is_admin)
 
 
 @router.put("/username", response_model=MeResponse)
