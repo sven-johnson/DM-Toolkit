@@ -1,0 +1,120 @@
+name: Build and Release VTT
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+# Allow creating releases and uploading assets
+permissions:
+  contents: write
+
+jobs:
+  # ── Job 1: Create a draft release with GitHub-generated notes ─────────────
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.release.outputs.id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create draft release
+        id: release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          name: "DM Toolkit VTT ${{ github.ref_name }}"
+
+  # ── Job 2: Build matrix (macOS universal + Windows x64) ───────────────────
+  build:
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            args: --target universal-apple-darwin
+            name: macOS Universal
+          - os: windows-latest
+            args: ''
+            name: Windows x64
+    runs-on: ${{ matrix.os }}
+    name: Build — ${{ matrix.name }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+          cache-dependency-path: 'vtt/pnpm-lock.yaml'
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # Universal binary requires both Rust targets on macOS
+      - name: Add macOS universal targets
+        if: matrix.os == 'macos-latest'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      # Cache Rust compile artifacts between runs (~15 min saved)
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './vtt/src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: ./vtt
+
+      - name: Build and upload to release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          # ── macOS code signing (optional) ─────────────────────────────────
+          # Without these secrets the build succeeds but shows an
+          # "unidentified developer" warning on first launch (bypass:
+          # right-click → Open). To enable signing, add all six secrets
+          # to your GitHub repo and see vtt/CLAUDE.md for instructions.
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+          # ── Tauri updater signing ─────────────────────────────────────────
+          # Required for the auto-updater to verify downloads.
+          # Generate with: cargo tauri signer generate -w ~/.tauri/vtt.key
+          # Then add the private key as TAURI_SIGNING_PRIVATE_KEY.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: ./vtt
+          tagName: ${{ github.ref_name }}
+          releaseName: "DM Toolkit VTT ${{ github.ref_name }}"
+          releaseId: ${{ needs.create-release.outputs.release_id }}
+          args: ${{ matrix.args }}
+
+  # ── Job 3: Publish the draft once all builds succeed ──────────────────────
+  publish-release:
+    needs: [create-release, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish draft release
+        uses: actions/github-script@v7
+        env:
+          RELEASE_ID: ${{ needs.create-release.outputs.release_id }}
+        with:
+          script: |
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: parseInt(process.env.RELEASE_ID),
+              draft: false,
+            })

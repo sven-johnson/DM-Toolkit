@@ -90,7 +90,6 @@ vtt/src-tauri/icons/android/mipmap-xxxhdpi/ic_launcher_foreground.png
 # VTT (Tauri app) — exclude build artifacts, keep source
 vtt/src-tauri/target/
 vtt/node_modules/
-.github/workflows/build-vtt.yml
 cheatsheets/02-advanced-typescript.ts
 cheatsheets/03-csharp-dotnet.cs
 cheatsheets/01-react-typescript.tsx
