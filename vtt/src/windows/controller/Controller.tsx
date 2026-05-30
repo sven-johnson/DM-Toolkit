@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { check as checkUpdate } from '@tauri-apps/plugin-updater'
 import { emit, listen } from '@tauri-apps/api/event'
-import { toAssetUrl } from '../../lib/assetUrl'
 import { availableMonitors } from '@tauri-apps/api/window'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
-import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import { useTheme } from '../../context/ThemeContext'
 import type {
   AoeRemovePayload,
@@ -27,13 +25,18 @@ import type { AoeConfig } from '../../shared/types/aoe'
 import type { ShowcaseSetPayload } from '../../shared/types/ipc'
 import { loadManifest, saveManifest } from '../../lib/vttPersistence'
 import type { ScenePresetData } from '../../lib/vttDatabase'
-import { AoePanel } from './AoePanel'
 import { ScenePresetsPanel } from './ScenePresetsPanel'
-import { ShowcasePanel } from './ShowcasePanel'
-import { CalibrationPanel } from './CalibrationPanel'
-import { ImageTools } from './ImageTools'
 import { StageMap } from './StageMap'
-import { TokenPanel } from './TokenPanel'
+import { ImageTools } from './ImageTools'
+import { StageMenuBar } from './StageMenuBar'
+import type { StageModalId } from './StageMenuBar'
+import { TokenModal } from './TokenModal'
+import { EffectsModal } from './EffectsModal'
+import { AoeModal } from './AoeModal'
+import { ShowcaseModal } from './ShowcaseModal'
+import { BackgroundModal } from './BackgroundModal'
+import { ViewModal } from './ViewModal'
+import { SettingsModal } from './SettingsModal'
 
 type Tab = 'stage' | 'tools' | 'events' | 'errors'
 
@@ -44,14 +47,6 @@ interface ErrorEntry {
   message: string
 }
 
-const LAYER_LABELS: Record<LayerName, string> = {
-  background: 'Background',
-  effects: 'Effects',
-  tokens: 'Tokens',
-  grid: 'Grid',
-}
-const LAYER_NAMES: LayerName[] = ['background', 'effects', 'tokens', 'grid']
-
 export function Controller() {
   const { theme, setTheme } = useTheme()
   const [playerOpen, setPlayerOpen] = useState(false)
@@ -60,9 +55,13 @@ export function Controller() {
   const [activeDef, setActiveDef] = useState<TokenDef | EffectDef | null>(null)
   const [activeType, setActiveType] = useState<'token' | 'effect' | null>(null)
   const [activeAoe, setActiveAoe] = useState<AoeConfig | null>(null)
+  const [menuExpanded, setMenuExpanded] = useState(true)
+  const [activeStageModal, setActiveStageModal] = useState<StageModalId | null>(null)
+  const [placingFrom, setPlacingFrom] = useState<StageModalId | null>(null)
+  const [stageRotation, setStageRotation] = useState<0 | 90 | 180 | 270>(0)
 
   function handleDefSelect(def: TokenDef | EffectDef, type: 'token' | 'effect') {
-    setActiveAoe(null)  // cancel AOE placement
+    setActiveAoe(null)
     if (activeDef?.id === def.id && activeType === type) {
       setActiveDef(null); setActiveType(null)
     } else {
@@ -100,14 +99,12 @@ export function Controller() {
   function handleLoadScenePreset(data: ScenePresetData) {
     const current = useVttStore.getState()
 
-    // Remove all current entities from PlayerView before replacing
     if (playerReady) {
       current.tokens.forEach((t) => void emit(VTT_EVENTS.TOKEN_REMOVE, { id: t.id } satisfies TokenRemovePayload))
       current.effects.forEach((e) => void emit(VTT_EVENTS.EFFECT_REMOVE, { id: e.id } satisfies EffectRemovePayload))
       current.aoeMarkers.forEach((a) => void emit(VTT_EVENTS.AOE_REMOVE, { id: a.id } satisfies AoeRemovePayload))
     }
 
-    // Replace store state in one shot
     useVttStore.setState({
       backgroundSrc: data.backgroundSrc,
       tokenDefs: data.tokenDefs,
@@ -120,13 +117,9 @@ export function Controller() {
       showAffectedArea: data.showAffectedArea,
     })
 
-    // Sync local layer toggle state in Controller
     setLayers(data.layers)
-
-    // Update background ref used by player-ready sync
     bgSrcRef.current = data.backgroundSrc
 
-    // Push new scene to PlayerView
     if (playerReady) {
       data.tokens.forEach((t) => void emit(VTT_EVENTS.TOKEN_UPSERT, t))
       data.effects.forEach((e) => void emit(VTT_EVENTS.EFFECT_UPSERT, e))
@@ -145,7 +138,6 @@ export function Controller() {
   const bgSrcRef = useRef('')
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // ── Persistence: load manifest on startup ────────────────────────────────
   useEffect(() => {
     loadManifest().then((data) => {
       const s = useVttStore.getState()
@@ -155,6 +147,7 @@ export function Controller() {
       data.effects?.forEach(s.upsertEffect)
       data.aoeMarkers?.forEach(s.upsertAoeMarker)
       data.showcaseDefs?.forEach(s.addShowcaseDef)
+      data.backgroundDefs?.forEach(s.addBackgroundDef)
       if (data.activeShowcase !== undefined) s.setActiveShowcase(data.activeShowcase ?? null)
       if (data.backgroundSrc) {
         s.setBackgroundSrc(data.backgroundSrc)
@@ -163,7 +156,6 @@ export function Controller() {
     })
   }, [])
 
-  // ── Persistence: auto-save on state changes (debounced 600 ms) ──────────
   useEffect(() => {
     const unsub = useVttStore.subscribe((state) => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
@@ -177,6 +169,7 @@ export function Controller() {
           backgroundSrc: state.backgroundSrc,
           showcaseDefs: state.showcaseDefs,
           activeShowcase: state.activeShowcase,
+          backgroundDefs: state.backgroundDefs,
         })
       }, 600)
     })
@@ -185,26 +178,32 @@ export function Controller() {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     }
   }, [])
+
   const [log, setLog] = useState<string[]>([])
   const logEndRef = useRef<HTMLDivElement>(null)
-
   const [errorLog, setErrorLog] = useState<ErrorEntry[]>([])
   const errEndRef = useRef<HTMLDivElement>(null)
-
   const [layers, setLayers] = useState<Record<LayerName, boolean>>({
     background: true, effects: true, tokens: true, grid: true,
   })
 
-  // Escape key cancels active placement
+  // Escape cancels placement and reopens the originating modal
   useEffect(() => {
     if (!activeDef && !activeAoe) return
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') { deactivateDef(); setActiveAoe(null) }
+      if (e.key === 'Escape') {
+        deactivateDef()
+        setActiveAoe(null)
+        if (placingFrom) {
+          setActiveStageModal(placingFrom)
+          setPlacingFrom(null)
+        }
+      }
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeDef, activeAoe])
+  }, [activeDef, activeAoe, placingFrom])
 
   useEffect(() => { logEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [log])
   useEffect(() => { errEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [errorLog])
@@ -251,24 +250,16 @@ export function Controller() {
   useEffect(() => {
     if (!playerReady) return
     const s = useVttStore.getState()
-
-    // Grid config and layer visibility first so entities render in the right positions
     void emit(VTT_EVENTS.GRID_CONFIG, s.grid satisfies GridConfigPayload)
     Object.entries(s.layers).forEach(([layer, visible]) =>
       void emit(VTT_EVENTS.LAYER_VISIBILITY, { layer: layer as LayerName, visible } satisfies LayerVisibilityPayload),
     )
-
-    // Background
     const src = bgSrcRef.current || s.backgroundSrc
     if (src) void emit(VTT_EVENTS.BACKGROUND_LOADED, { src } satisfies BackgroundLoadedPayload)
-
-    // Entities
     s.tokens.forEach((t) => void emit(VTT_EVENTS.TOKEN_UPSERT, t))
     s.effects.forEach((e) => void emit(VTT_EVENTS.EFFECT_UPSERT, e))
     s.aoeMarkers.forEach((a) => void emit(VTT_EVENTS.AOE_UPSERT, a))
     void emit(VTT_EVENTS.SHOW_AFFECTED_AREA, { enabled: s.showAffectedArea } satisfies ShowAffectedAreaPayload)
-
-    // Showcase
     if (s.activeShowcase) {
       const def = s.showcaseDefs.find((d) => d.id === s.activeShowcase!.defId)
       if (def) {
@@ -287,7 +278,6 @@ export function Controller() {
     try {
       const monitors = await availableMonitors()
       const secondary = monitors.length >= 2 ? monitors[1] : null
-
       const options = secondary
         ? {
             fullscreen: true,
@@ -298,9 +288,7 @@ export function Controller() {
             decorations: false,
           }
         : { width: 1280, height: 720, center: true, resizable: true }
-
       const win = new WebviewWindow('player', { url: 'player.html', title: 'Player View', ...options })
-
       win.once('tauri://created', () => {
         setPlayerOpen(true)
         appendLog(`PlayerView opened (${secondary ? 'fullscreen on monitor 2' : 'windowed on primary'}).`)
@@ -350,27 +338,36 @@ export function Controller() {
     if (!playerReady) return
     const payload: LayerVisibilityPayload = { layer, visible }
     await emit(VTT_EVENTS.LAYER_VISIBILITY, payload)
-    appendLog(`Layer "${LAYER_LABELS[layer]}" ${visible ? 'shown' : 'hidden'}.`)
   }
 
-  async function handleLoadBackground() {
-    try {
-      const path = await openDialog({
-        multiple: false,
-        filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }],
-      })
-      if (!path || typeof path !== 'string') return
-      const src = toAssetUrl(path)
-      bgSrcRef.current = src
-      useVttStore.getState().setBackgroundSrc(src)
-      if (playerReady) {
-        const payload: BackgroundLoadedPayload = { src }
-        await emit(VTT_EVENTS.BACKGROUND_LOADED, payload)
-      }
-      appendLog(`Background loaded: ${path.split(/[\\/]/).pop()}`)
-    } catch (err) {
-      appendError('Controller.loadBackground', err instanceof Error ? err.message : String(err))
+  async function handleSelectBackground(src: string) {
+    bgSrcRef.current = src
+    useVttStore.getState().setBackgroundSrc(src)
+    if (playerReady) {
+      const payload: BackgroundLoadedPayload = { src }
+      await emit(VTT_EVENTS.BACKGROUND_LOADED, payload)
     }
+    appendLog(`Background loaded: ${src.split(/[\\/]/).pop() ?? 'image'}`)
+  }
+
+  // ── Modal-initiated placement handlers ────────────────────────────────────
+
+  function handleTokenSelect(def: TokenDef) {
+    handleDefSelect(def, 'token')
+    setActiveStageModal(null)
+    setPlacingFrom('tokens')
+  }
+
+  function handleEffectSelect(def: EffectDef) {
+    handleDefSelect(def, 'effect')
+    setActiveStageModal(null)
+    setPlacingFrom('effects')
+  }
+
+  function handleAoeModalPlace(config: AoeConfig) {
+    handlePlaceAoe(config)
+    setActiveStageModal(null)
+    setPlacingFrom('aoe')
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -394,125 +391,130 @@ export function Controller() {
         </div>
       </header>
 
-      <main className="controller-main">
+      <main className={`controller-main${activeTab === 'stage' ? ' controller-main--stage' : ''}`}>
         {/* ── Tab bar ── */}
         <div className="tab-bar">
-          {(['stage', 'tools', 'events', 'errors'] as Tab[]).map((tab) => (
-            <button
-              key={tab}
-              className={`tab-btn ${activeTab === tab ? 'tab-btn--active' : ''} ${tab === 'errors' && errorCount > 0 ? 'tab-btn--has-errors' : ''}`}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab === 'stage'  && 'Stage'}
-              {tab === 'tools'  && 'Image Tools'}
-              {tab === 'events' && 'Event Log'}
-              {tab === 'errors' && <>Error Log{errorCount > 0 && <span className="tab-badge">{errorCount}</span>}</>}
-            </button>
-          ))}
+          <div className="tab-bar-tabs">
+            {(['stage', 'tools', 'events', 'errors'] as Tab[]).map((tab) => (
+              <button
+                key={tab}
+                className={`tab-btn ${activeTab === tab ? 'tab-btn--active' : ''} ${tab === 'errors' && errorCount > 0 ? 'tab-btn--has-errors' : ''}`}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab === 'stage'  && 'Stage'}
+                {tab === 'tools'  && 'Image Tools'}
+                {tab === 'events' && 'Event Log'}
+                {tab === 'errors' && <>Dev Tools{errorCount > 0 && <span className="tab-badge">{errorCount}</span>}</>}
+              </button>
+            ))}
+          </div>
+          <div className="tab-bar-actions">
+            <span className="player-status-inline">
+              <span className={`status-dot${playerOpen ? ' status-dot--open' : ''}`} />
+              {!playerOpen ? 'Closed' : playerReady ? 'Ready' : 'Opening…'}
+            </span>
+            {!playerOpen ? (
+              <button
+                className="btn btn-primary"
+                style={{ fontSize: '0.78rem', padding: '0.25rem 0.75rem' }}
+                onClick={handleOpenPlayer}
+              >
+                Open Player
+              </button>
+            ) : (
+              <button
+                className="btn btn-danger"
+                style={{ fontSize: '0.78rem', padding: '0.25rem 0.75rem' }}
+                onClick={handleClosePlayer}
+              >
+                Close Player
+              </button>
+            )}
+          </div>
         </div>
 
         {/* ── Stage tab ── */}
         {activeTab === 'stage' && (
-          <>
-            <section className="control-section">
-              <h2>Player View</h2>
-              <div className="status-row">
-                <span className={`status-dot ${playerOpen ? 'status-dot--open' : ''}`} />
-                <span className="status-label">
-                  {!playerOpen ? 'Closed' : playerReady ? 'Open & Ready' : 'Opening…'}
+          <div className="stage-view">
+            <StageMenuBar
+              activeModal={activeStageModal}
+              onOpenModal={(id) => setActiveStageModal((prev) => (prev === id ? null : id))}
+              expanded={menuExpanded}
+              onToggleExpand={() => setMenuExpanded((e) => !e)}
+            />
+            <div className="stage-content">
+              <div className="stage-map-rotation-bar">
+                <button
+                  className="stage-rotate-btn"
+                  onClick={() => setStageRotation((r) => ((r - 90 + 360) % 360) as 0 | 90 | 180 | 270)}
+                  title="Rotate view 90° counterclockwise"
+                >↺</button>
+                <span className="stage-rotate-label">
+                  {stageRotation > 0 ? `${stageRotation}°` : 'Map View'}
                 </span>
-              </div>
-              <div className="button-row">
-                {!playerOpen ? (
-                  <button className="btn btn-primary" onClick={handleOpenPlayer}>Open Player View</button>
-                ) : (
-                  <button className="btn btn-danger" onClick={handleClosePlayer}>Close Player View</button>
-                )}
                 <button
-                  className="btn btn-secondary"
-                  onClick={handleSendTest}
-                  disabled={!playerReady}
-                  title={!playerReady ? 'Waiting for PlayerView to be ready' : undefined}
-                >
-                  Send Test Message
-                </button>
+                  className="stage-rotate-btn"
+                  onClick={() => setStageRotation((r) => ((r + 90) % 360) as 0 | 90 | 180 | 270)}
+                  title="Rotate view 90° clockwise"
+                >↻</button>
               </div>
-            </section>
-
-            <section className="control-section">
-              <h2>Scene Presets</h2>
-              <ScenePresetsPanel onLoad={handleLoadScenePreset} />
-            </section>
-
-            <section className="control-section">
-              <h2>Stage</h2>
-              <div className="subsection">
-                <h3>Layers</h3>
-                {LAYER_NAMES.map((layer) => (
-                  <div key={layer} className="layer-row">
-                    <span className="layer-label">{LAYER_LABELS[layer]}</span>
-                    <label className="toggle">
-                      <input type="checkbox" checked={layers[layer]} onChange={(e) => handleLayerToggle(layer, e.target.checked)} />
-                      <span className="toggle-track" />
-                    </label>
-                  </div>
-                ))}
-                <div className="layer-row" style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
-                  <span className="layer-label">Show Affected Area</span>
-                  <label className="toggle">
-                    <input type="checkbox" checked={showAffectedArea} onChange={(e) => handleAffectedAreaToggle(e.target.checked)} />
-                    <span className="toggle-track" />
-                  </label>
-                </div>
-              </div>
-              <div className="subsection">
-                <h3>Background</h3>
-                <button
-                  className="btn btn-secondary"
-                  onClick={handleLoadBackground}
-                >
-                  Load Image…
-                </button>
-              </div>
-              <div className="subsection">
-                <h3>Stage Map</h3>
-                <p className="cal-hint">Drag tokens onto the map to place them. Right-click to edit.</p>
-                <StageMap
-                  playerReady={playerReady}
-                  activeDef={activeDef}
-                  activeType={activeType}
-                  onDeactivate={deactivateDef}
-                  activeAoe={activeAoe}
-                  onAoeDeactivate={() => setActiveAoe(null)}
-                />
-              </div>
-            </section>
-
-            <section className="control-section">
-              <h2>Assets</h2>
-              <TokenPanel
+              <StageMap
+                playerReady={playerReady}
                 activeDef={activeDef}
                 activeType={activeType}
-                onDefSelect={handleDefSelect}
+                onDeactivate={deactivateDef}
+                activeAoe={activeAoe}
+                onAoeDeactivate={() => setActiveAoe(null)}
+                stageRotation={stageRotation}
               />
-            </section>
 
-            <section className="control-section">
-              <h2>AOE Markers</h2>
-              <AoePanel onPlace={handlePlaceAoe} isPlacing={!!activeAoe} />
-            </section>
+              <section className="control-section">
+                <h2>Scene Presets</h2>
+                <ScenePresetsPanel onLoad={handleLoadScenePreset} />
+              </section>
 
-            <section className="control-section">
-              <h2>Visual Showcase</h2>
-              <p className="cal-hint">Displays full-screen art on the player view above all other visuals.</p>
-              <ShowcasePanel onSet={handleShowcaseSet} onClear={handleShowcaseClear} />
-            </section>
-
-            <section className="control-section">
-              <h2>Grid Calibration</h2>
-              <CalibrationPanel playerReady={playerReady} onLog={appendLog} />
-            </section>
-          </>
+              {/* ── Modal overlays ── */}
+              {activeStageModal === 'tokens' && (
+                <TokenModal onSelectToken={handleTokenSelect} onClose={() => setActiveStageModal(null)} />
+              )}
+              {activeStageModal === 'effects' && (
+                <EffectsModal onSelectEffect={handleEffectSelect} onClose={() => setActiveStageModal(null)} />
+              )}
+              {activeStageModal === 'aoe' && (
+                <AoeModal
+                  onPlace={handleAoeModalPlace}
+                  isPlacing={!!activeAoe}
+                  onClose={() => setActiveStageModal(null)}
+                />
+              )}
+              {activeStageModal === 'showcase' && (
+                <ShowcaseModal
+                  onSet={handleShowcaseSet}
+                  onClear={handleShowcaseClear}
+                  onClose={() => setActiveStageModal(null)}
+                />
+              )}
+              {activeStageModal === 'background' && (
+                <BackgroundModal onSelect={handleSelectBackground} onClose={() => setActiveStageModal(null)} />
+              )}
+              {activeStageModal === 'view' && (
+                <ViewModal
+                  layers={layers}
+                  showAffectedArea={showAffectedArea}
+                  onLayerToggle={handleLayerToggle}
+                  onAffectedAreaToggle={handleAffectedAreaToggle}
+                  onClose={() => setActiveStageModal(null)}
+                />
+              )}
+              {activeStageModal === 'settings' && (
+                <SettingsModal
+                  playerReady={playerReady}
+                  onLog={appendLog}
+                  onClose={() => setActiveStageModal(null)}
+                />
+              )}
+            </div>
+          </div>
         )}
 
         {/* ── Image Tools tab ── */}
@@ -532,10 +534,20 @@ export function Controller() {
           </section>
         )}
 
-        {/* ── Error Log tab ── */}
+        {/* ── Dev Tools tab ── */}
         {activeTab === 'errors' && (
           <section className="control-section log-section">
-            <h2>Error Log</h2>
+            <h2>Dev Tools</h2>
+            <div style={{ marginBottom: '1rem' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={handleSendTest}
+                disabled={!playerReady}
+                title={!playerReady ? 'Waiting for PlayerView to be ready' : undefined}
+              >
+                Send Test Message
+              </button>
+            </div>
             <div className="log error-log">
               {errorLog.length === 0 && <p className="log-empty">No errors recorded.</p>}
               {errorLog.map((entry, i) => (

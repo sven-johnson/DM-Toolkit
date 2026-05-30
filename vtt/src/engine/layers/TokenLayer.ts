@@ -1,9 +1,11 @@
 import { Assets, Container, Graphics, Sprite, Text, Texture } from 'pixi.js'
 import type { Token } from '../../shared/types/tokens'
 import type { GridConfig } from '../../store/vttStore'
+import { useVttStore } from '../../store/vttStore'
 
 interface TokenEntry {
   container: Container
+  outline: Graphics
   sprite: Sprite
   /** Badge sits at the top-right of the grid cell and rotates to match the token. */
   badge: Container
@@ -26,6 +28,7 @@ export class TokenLayer {
 
     if (!entry) {
       const c = new Container()
+      const outline = new Graphics()
       const sprite = new Sprite()
       sprite.anchor.set(0.5, 0.5)
 
@@ -41,10 +44,10 @@ export class TokenLayer {
       badgeLabel.anchor.set(0.5, 0.5)
       badge.addChild(badgeCircle, badgeLabel)
 
-      c.addChild(sprite, badge)
+      c.addChild(outline, sprite, badge)
       this.container.addChild(c)
 
-      entry = { container: c, sprite, badge, badgeCircle, badgeLabel, token }
+      entry = { container: c, outline, sprite, badge, badgeCircle, badgeLabel, token }
       this.entries.set(token.id, entry)
 
       Assets.load<Texture>(token.src)
@@ -72,7 +75,7 @@ export class TokenLayer {
   }
 
   private _layout(entry: TokenEntry, config: GridConfig): void {
-    const { token, container, sprite, badge, badgeCircle, badgeLabel } = entry
+    const { token, container, outline, sprite, badge, badgeCircle, badgeLabel } = entry
     const { cellSize, originX, originY } = config
     const size = token.size * cellSize
 
@@ -86,6 +89,25 @@ export class TokenLayer {
       sprite.height = size
     }
     sprite.angle = token.rotation ?? 0
+
+    // Token outline
+    const thicknessPx = useVttStore.getState().tokenOutlineThicknessPx
+    outline.clear()
+    outline.x = size / 2
+    outline.y = size / 2
+    outline.angle = token.rotation ?? 0
+    if (token.outlineColor && thicknessPx > 0) {
+      const color = parseInt(token.outlineColor.replace('#', ''), 16)
+      const half = size / 2
+      const shape = token.outlineShape ?? 'square'
+      if (shape === 'circle') {
+        outline.circle(0, 0, half).stroke({ color, width: thicknessPx })
+      } else if (shape === 'rounded') {
+        outline.roundRect(-half, -half, size, size, half * 0.3).stroke({ color, width: thicknessPx })
+      } else {
+        outline.rect(-half, -half, size, size).stroke({ color, width: thicknessPx })
+      }
+    }
 
     // Badge: centered on the top-right grid intersection of the token's footprint
     const badgeR = Math.max(8, Math.round(cellSize * 0.12))

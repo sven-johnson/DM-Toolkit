@@ -5,6 +5,7 @@ export interface TokenDef {
   name: string
   src: string        // asset:// URL
   defaultSize: TokenSize
+  shape?: 'square' | 'circle' | 'rounded'
 }
 
 export interface EffectDef {
@@ -25,6 +26,8 @@ export interface Token {
   gridY: number
   size: TokenSize
   rotation?: number
+  outlineColor?: string            // undefined = no outline; '#000000' = default black
+  outlineShape?: 'square' | 'circle' | 'rounded'  // mirrors def shape at placement time
 }
 
 export interface Effect {

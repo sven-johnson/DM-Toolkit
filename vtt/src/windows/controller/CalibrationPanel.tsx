@@ -56,9 +56,10 @@ export function CalibrationPanel({ playerReady, onLog }: Props) {
     useVttStore.getState().setTvDimensions(tvWidth, tvHeight)
   }, [tvWidth, tvHeight])
 
-  // Live-push to PlayerView whenever any calibration value changes
+  // Keep store grid config in sync so StageMap always reflects current settings,
+  // and live-push to PlayerView when it's ready.
   useEffect(() => {
-    if (!playerReady || !loaded || cellPx <= 0) return
+    if (!loaded || cellPx <= 0) return
     const payload: GridConfigPayload = {
       cellSize: cellPx,
       color: hexToNum(gridColor),
@@ -67,7 +68,8 @@ export function CalibrationPanel({ playerReady, onLog }: Props) {
       originX,
       originY,
     }
-    void emit(VTT_EVENTS.GRID_CONFIG, payload)
+    useVttStore.getState().setGridConfig(payload)
+    if (playerReady) void emit(VTT_EVENTS.GRID_CONFIG, payload)
   }, [playerReady, loaded, cellPx, gridColor, lineWidth, opacity, originX, originY])
 
   async function handleSave() {

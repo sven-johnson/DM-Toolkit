@@ -590,11 +590,34 @@ body {
 /* ── Tab bar ── */
 .tab-bar {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 0;
   border-bottom: 1px solid var(--border);
   margin-bottom: 1.5rem;
   flex-shrink: 0;
+}
+
+.tab-bar-tabs {
+  display: flex;
   flex-wrap: wrap;
+}
+
+.tab-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-right: 0.25rem;
+  flex-shrink: 0;
+}
+
+.player-status-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .tab-btn {
@@ -991,6 +1014,284 @@ body {
   margin-bottom: 0.6rem;
 }
 
+/* ── Stage Mode (controller-main overrides) ── */
+.controller-main--stage {
+  overflow: hidden;
+  padding: 0;
+  gap: 0;
+}
+
+.controller-main--stage .tab-bar {
+  margin-bottom: 0;
+  padding: 0 0.75rem;
+  background: var(--bg-card);
+}
+
+/* ── Stage View Layout ── */
+.stage-view {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Stage Menu Bar ── */
+.stage-menu-bar {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+  flex-shrink: 0;
+  width: 160px;
+  transition: width 0.18s;
+  overflow: hidden;
+}
+
+.stage-menu-bar--collapsed {
+  width: 48px;
+}
+
+.stage-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.75rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  width: 100%;
+  text-align: left;
+  transition: background 0.12s, color 0.12s;
+}
+
+.stage-menu-item:hover {
+  background: var(--bg-input);
+  color: var(--text);
+}
+
+.stage-menu-item--active {
+  background: var(--bg-input);
+  color: var(--accent);
+}
+
+.stage-menu-icon {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.stage-menu-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stage-menu-expand-btn {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.6rem;
+  width: 100%;
+  border-top: 1px solid var(--border);
+  font-size: 1.1rem;
+  transition: color 0.12s;
+}
+
+.stage-menu-expand-btn:hover {
+  color: var(--text);
+}
+
+/* ── Stage Content Area ── */
+.stage-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 1.5rem;
+  gap: 1.5rem;
+  position: relative;
+  min-height: 0;
+}
+
+/* ── Stage Modals ── */
+.stage-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.stage-modal-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 300px;
+  max-width: 85%;
+  max-height: 85%;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+
+.stage-modal-panel--aoe {
+  min-width: 480px;
+}
+
+.stage-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.stage-modal-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.stage-modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius);
+  transition: color 0.12s, background 0.12s;
+  line-height: 1;
+}
+
+.stage-modal-close:hover {
+  color: var(--text);
+  background: var(--bg-input);
+}
+
+.stage-modal-back {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.4rem;
+  padding: 0 0.4rem 0 0;
+  transition: color 0.12s;
+  line-height: 1;
+}
+
+.stage-modal-back:hover {
+  color: var(--text);
+}
+
+.stage-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem 1.5rem;
+}
+
+.stage-modal-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.25rem;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  justify-content: flex-end;
+}
+
+/* ── AOE Modal two-column layout ── */
+.aoe-modal-body {
+  display: flex;
+  flex: 1;
+  min-height: 260px;
+  overflow: hidden;
+}
+
+.aoe-modal-presets {
+  width: 148px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.aoe-modal-form {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+}
+
+.aoe-modal-preset-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.3rem;
+}
+
+.aoe-modal-preset-btn {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.3rem 0.45rem;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  transition: border-color 0.12s;
+}
+
+.aoe-modal-preset-btn:hover {
+  border-color: var(--accent);
+}
+
+/* ── AOE shape icon buttons ── */
+.aoe-shape-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+  flex: 1;
+}
+
+.aoe-shape-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.aoe-shape-btn--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
 /* ── Crop selector ── */
 .crop-selector-wrap {
   position: relative;
@@ -1011,4 +1312,91 @@ body {
   inset: 0;
   cursor: crosshair;
   user-select: none;
+}
+
+/* ── Stage map rotation bar ── */
+.stage-map-rotation-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  user-select: none;
+}
+
+.stage-rotate-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+.stage-rotate-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.stage-rotate-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  min-width: 4rem;
+  text-align: center;
+}
+
+/* ── Entity rotation / outline overlay ── */
+.entity-overlay {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.3rem 0.35rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+  pointer-events: all;
+  z-index: 10;
+}
+
+.entity-overlay-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.entity-rotate-btn {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.2rem 0.45rem;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+.entity-rotate-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.entity-color-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.12s, transform 0.12s;
+}
+.entity-color-swatch:hover {
+  transform: scale(1.2);
+  border-color: var(--text-muted);
+}
+.entity-color-swatch--active {
+  border-color: var(--accent) !important;
+  transform: scale(1.15);
 }

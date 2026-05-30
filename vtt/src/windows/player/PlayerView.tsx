@@ -44,19 +44,14 @@ export function PlayerView() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const isFullscreenRef = useRef(false)
 
-  // Redraw grid and reposition all entities on window resize
+  // Scale all entities to fit window whenever it resizes (TV dimensions define the virtual canvas)
   useEffect(() => {
     function onResize() {
       const sm = stageManager.current
       if (!sm) return
-      const grid = useVttStore.getState().grid
-      if (isFullscreenRef.current) {
-        const { width: tvW, height: tvH } = useVttStore.getState().tvDimensions
-        const { scale, offsetX, offsetY } = computeFullscreenScale(tvW, tvH)
-        sm.applyFullscreenScale(scale, offsetX, offsetY, tvW, tvH)
-      } else {
-        sm.resize(grid)
-      }
+      const { width: tvW, height: tvH } = useVttStore.getState().tvDimensions
+      const { scale, offsetX, offsetY } = computeFullscreenScale(tvW, tvH)
+      sm.applyFullscreenScale(scale, offsetX, offsetY, tvW, tvH)
     }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
@@ -85,18 +80,16 @@ export function PlayerView() {
 
         sm = new StageManager(app, reportError)
         stageManager.current = sm
-        sm.redrawGrid(useVttStore.getState().grid)
 
-        // If the window is already fullscreen (opened on secondary monitor),
-        // apply the scale immediately after init.
         const alreadyFs = await getCurrentWindow().isFullscreen()
         if (alreadyFs) {
           isFullscreenRef.current = true
           setIsFullscreen(true)
-          const { width: tvW, height: tvH } = useVttStore.getState().tvDimensions
-          const { scale, offsetX, offsetY } = computeFullscreenScale(tvW, tvH)
-          sm.applyFullscreenScale(scale, offsetX, offsetY, tvW, tvH)
         }
+        // Always apply TV-based scale-to-fit, regardless of fullscreen state
+        const { width: tvW0, height: tvH0 } = useVttStore.getState().tvDimensions
+        const init = computeFullscreenScale(tvW0, tvH0)
+        sm.applyFullscreenScale(init.scale, init.offsetX, init.offsetY, tvW0, tvH0)
       } catch (err) {
         reportError('PlayerView.init', err instanceof Error ? err.message : String(err))
         return
@@ -144,14 +137,9 @@ export function PlayerView() {
             useVttStore.getState().setGridConfig(event.payload)
             const sm = stageManager.current
             if (!sm) return
-            const grid = useVttStore.getState().grid
-            if (isFullscreenRef.current) {
-              const { width: tvW, height: tvH } = useVttStore.getState().tvDimensions
-              const { scale, offsetX, offsetY } = computeFullscreenScale(tvW, tvH)
-              sm.applyFullscreenScale(scale, offsetX, offsetY, tvW, tvH)
-            } else {
-              sm.redrawGrid(grid)
-            }
+            const { width: tvW, height: tvH } = useVttStore.getState().tvDimensions
+            const { scale, offsetX, offsetY } = computeFullscreenScale(tvW, tvH)
+            sm.applyFullscreenScale(scale, offsetX, offsetY, tvW, tvH)
           } catch (err) {
             reportError('PlayerView.gridConfig', err instanceof Error ? err.message : String(err))
           }
@@ -310,27 +298,16 @@ export function PlayerView() {
 
   async function handleToggleFullscreen() {
     const win = getCurrentWindow()
+    const entering = !isFullscreenRef.current
+    isFullscreenRef.current = entering
+    setIsFullscreen(entering)
+    await win.setFullscreen(entering)
+    // Apply scale eagerly; onResize will fire too but that's harmless
     const sm = stageManager.current
-    const grid = useVttStore.getState().grid
-
-    if (isFullscreenRef.current) {
-      isFullscreenRef.current = false
-      setIsFullscreen(false)
-      await win.setFullscreen(false)
-      // onResize fires after setFullscreen resolves and the window shrinks;
-      // since isFullscreenRef is already false it will call sm.resize(grid).
-      // Call it eagerly too so there's no frame where scale is wrong.
-      sm?.resetFullscreenScale(grid)
-    } else {
-      isFullscreenRef.current = true
-      setIsFullscreen(true)
-      await win.setFullscreen(true)
-      // onResize fires after the window expands; apply scale immediately as well.
-      if (sm) {
-        const { width: tvW, height: tvH } = useVttStore.getState().tvDimensions
-        const { scale, offsetX, offsetY } = computeFullscreenScale(tvW, tvH)
-        sm.applyFullscreenScale(scale, offsetX, offsetY, tvW, tvH)
-      }
+    if (sm) {
+      const { width: tvW, height: tvH } = useVttStore.getState().tvDimensions
+      const { scale, offsetX, offsetY } = computeFullscreenScale(tvW, tvH)
+      sm.applyFullscreenScale(scale, offsetX, offsetY, tvW, tvH)
     }
   }
 

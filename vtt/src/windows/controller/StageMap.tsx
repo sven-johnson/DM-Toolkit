@@ -182,10 +182,11 @@ interface Props {
   onDeactivate: () => void
   activeAoe: AoeConfig | null
   onAoeDeactivate: () => void
+  stageRotation: 0 | 90 | 180 | 270
 }
 
 export function StageMap({
-  playerReady, activeDef, activeType, onDeactivate, activeAoe, onAoeDeactivate,
+  playerReady, activeDef, activeType, onDeactivate, activeAoe, onAoeDeactivate, stageRotation,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef    = useRef<HTMLCanvasElement>(null)
@@ -194,6 +195,7 @@ export function StageMap({
   const effects      = useVttStore((s) => s.effects)
   const tokenDefs    = useVttStore((s) => s.tokenDefs)
   const effectDefs   = useVttStore((s) => s.effectDefs)
+  const tokenOutlineThicknessPx = useVttStore((s) => s.tokenOutlineThicknessPx)
   const aoeMarkers        = useVttStore((s) => s.aoeMarkers)
   const showAffectedArea  = useVttStore((s) => s.showAffectedArea)
   const grid              = useVttStore((s) => s.grid)
@@ -233,9 +235,14 @@ export function StageMap({
   const lastTokenGhostPos = useRef<{ gridX: number; gridY: number } | null>(null)
   const lastAoeGhostPos   = useRef<{ intX: number; intY: number } | null>(null)
 
+  // Tracks the timestamp of the last rotation so the wheel cooldown can be applied
+  const lastRotationRef = useRef(0)
+
+  const rotationCooldownMs = useVttStore((s) => s.rotationCooldownMs)
+
   // Ref snapshot for native event handlers (wheel)
-  const wheelRef = useRef({ playerReady, mapW, mapH, scale, grid: grid, activeEntity: null as ActiveEntity | null })
-  useEffect(() => { wheelRef.current = { playerReady, mapW, mapH, scale, grid, activeEntity } })
+  const wheelRef = useRef({ playerReady, mapW, mapH, scale, grid: grid, activeEntity: null as ActiveEntity | null, cooldownMs: rotationCooldownMs })
+  useEffect(() => { wheelRef.current = { playerReady, mapW, mapH, scale, grid, activeEntity, cooldownMs: rotationCooldownMs } })
 
   // Escape clears active selection
   useEffect(() => {
@@ -340,7 +347,10 @@ export function StageMap({
 
     function onWheel(e: WheelEvent) {
       e.preventDefault()
-      const { playerReady, mapW, mapH, scale, grid, activeEntity } = wheelRef.current
+      const { playerReady, mapW, mapH, scale, grid, activeEntity, cooldownMs } = wheelRef.current
+      const now = Date.now()
+      if (now - lastRotationRef.current < cooldownMs) return
+      lastRotationRef.current = now
       const { cellSize, originX, originY } = grid
       const { tokens, aoeMarkers } = useVttStore.getState()
       const dir = e.deltaY > 0 ? 1 : -1  // 1 = clockwise (scroll down)
@@ -513,6 +523,24 @@ export function StageMap({
       ctx.rotate(((token.rotation ?? 0) * Math.PI) / 180)
       if (img) ctx.drawImage(img, -sizePx / 2, -sizePx / 2, sizePx, sizePx)
       else { ctx.fillStyle = '#ff8844'; ctx.fillRect(-sizePx / 2, -sizePx / 2, sizePx, sizePx) }
+
+      // Token outline
+      if (token.outlineColor && tokenOutlineThicknessPx > 0) {
+        ctx.strokeStyle = token.outlineColor
+        ctx.lineWidth = tokenOutlineThicknessPx * scale
+        ctx.globalAlpha = 1
+        const half = sizePx / 2
+        ctx.beginPath()
+        if (token.outlineShape === 'circle') {
+          ctx.arc(0, 0, half, 0, 2 * Math.PI)
+        } else if (token.outlineShape === 'rounded') {
+          const r = half * 0.3
+          ctx.roundRect(-half, -half, sizePx, sizePx, r)
+        } else {
+          ctx.rect(-half, -half, sizePx, sizePx)
+        }
+        ctx.stroke()
+      }
       ctx.restore()
 
       // Badge: centered on the top-right grid intersection of the token's footprint
@@ -526,10 +554,13 @@ export function StageMap({
           const by = ty
           ctx.beginPath(); ctx.arc(bx, by, badgeR, 0, 2 * Math.PI)
           ctx.fillStyle = '#000000'; ctx.fill()
+          ctx.save()
+          ctx.translate(bx, by)
+          ctx.rotate(-(stageRotation * Math.PI) / 180)  // keep text upright
           ctx.font = `bold ${Math.max(6, Math.round(badgeR * 1.2))}px sans-serif`
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-          ctx.fillStyle = '#ffffff'; ctx.fillText(letter, bx, by)
-          ctx.textBaseline = 'alphabetic'
+          ctx.fillStyle = '#ffffff'; ctx.fillText(letter, 0, 0)
+          ctx.restore()
         }
       }
       // Active-selection highlight
@@ -643,15 +674,25 @@ export function StageMap({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tokens, effects, aoeMarkers, showAffectedArea, grid, tvDimensions, backgroundSrc,
       activeEntity, dropPreview, ghostPos, aoeGhost, activeDef, activeType, activeAoe,
-      showcaseDefs, activeShowcase, mapW, mapH, drawTick])
+      showcaseDefs, activeShowcase, mapW, mapH, drawTick, stageRotation, tokenOutlineThicknessPx, tokenDefs])
 
   // ── Coordinate helpers ────────────────────────────────────────────────────
 
   function mouseToFull(e: React.MouseEvent<HTMLCanvasElement>) {
     const r = e.currentTarget.getBoundingClientRect()
+    const cx = r.left + r.width / 2
+    const cy = r.top + r.height / 2
+    const dx = e.clientX - cx
+    const dy = e.clientY - cy
+    // Inverse-rotate to recover canvas-local offset
+    let cdx: number, cdy: number
+    if      (stageRotation === 90)  { cdx =  dy; cdy = -dx }
+    else if (stageRotation === 180) { cdx = -dx; cdy = -dy }
+    else if (stageRotation === 270) { cdx = -dy; cdy =  dx }
+    else                            { cdx =  dx; cdy =  dy }
     return {
-      fullX: ((e.clientX - r.left) * (mapW / r.width)) / scale,
-      fullY: ((e.clientY - r.top)  * (mapH / r.height)) / scale,
+      fullX: (mapW / 2 + cdx) / scale,
+      fullY: (mapH / 2 + cdy) / scale,
     }
   }
 
@@ -685,7 +726,11 @@ export function StageMap({
     const safeX = Math.max(0, gridX), safeY = Math.max(0, gridY)
     if (type === 'token') {
       const d = def as TokenDef
-      const token: Token = { id: crypto.randomUUID(), defId: d.id, name: d.name, src: d.src, gridX: safeX, gridY: safeY, size: d.defaultSize }
+      const token: Token = {
+        id: crypto.randomUUID(), defId: d.id, name: d.name, src: d.src,
+        gridX: safeX, gridY: safeY, size: d.defaultSize,
+        outlineColor: '#000000', outlineShape: d.shape ?? 'square',
+      }
       useVttStore.getState().upsertToken(token); if (playerReady) void emit(VTT_EVENTS.TOKEN_UPSERT, token)
     } else {
       const d = def as EffectDef
@@ -919,9 +964,9 @@ export function StageMap({
     const u = { ...ef, opacity }; useVttStore.getState().upsertEffect(u); if (playerReady) void emit(VTT_EVENTS.EFFECT_UPSERT, u)
   }
 
-  function handleRotate(id: string) {
+  function handleRotate(id: string, dir: 1 | -1) {
     const t = tokens.find((t) => t.id === id); if (!t) return
-    const u: Token = { ...t, rotation: ((t.rotation ?? 0) + 90) % 360 }
+    const u: Token = { ...t, rotation: ((t.rotation ?? 0) + dir * 90 + 360) % 360 }
     useVttStore.getState().upsertToken(u); if (playerReady) void emit(VTT_EVENTS.TOKEN_UPSERT, u)
   }
 
@@ -940,13 +985,56 @@ export function StageMap({
     useVttStore.getState().removeAoeMarker(id); if (playerReady) void emit(VTT_EVENTS.AOE_REMOVE, { id })
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  function handleSetOutlineColor(id: string, color: string | undefined) {
+    const t = tokens.find((t) => t.id === id); if (!t) return
+    const updated: Token = { ...t, outlineColor: color }
+    useVttStore.getState().upsertToken(updated)
+    if (playerReady) void emit(VTT_EVENTS.TOKEN_UPSERT, updated)
+    setDrawTick((n) => n + 1)
+  }
+
+  // ── Arrow key movement for selected entity ────────────────────────────────
+
+  useEffect(() => {
+    if (!activeEntity || activeEntity.type === 'aoe' || contextMenu) return
+    const sel = activeEntity  // captured non-null for closure
+    function onKey(e: KeyboardEvent) {
+      if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return
+      e.preventDefault()
+      const dx = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0
+      const dy = e.key === 'ArrowUp'   ? -1 : e.key === 'ArrowDown'  ? 1 : 0
+      if (sel.type === 'token') {
+        const t = useVttStore.getState().tokens.find((t) => t.id === sel.id); if (!t) return
+        const updated: Token = { ...t, gridX: Math.max(0, t.gridX + dx), gridY: Math.max(0, t.gridY + dy) }
+        useVttStore.getState().upsertToken(updated)
+        if (playerReady) void emit(VTT_EVENTS.TOKEN_UPSERT, updated)
+        setDrawTick((n) => n + 1)
+      } else {
+        const ef = useVttStore.getState().effects.find((e) => e.id === sel.id); if (!ef) return
+        const updated: Effect = { ...ef, gridX: Math.max(0, ef.gridX + dx), gridY: Math.max(0, ef.gridY + dy) }
+        useVttStore.getState().upsertEffect(updated)
+        if (playerReady) void emit(VTT_EVENTS.EFFECT_UPSERT, updated)
+        setDrawTick((n) => n + 1)
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeEntity, contextMenu, playerReady])
+
+  const containerH = stageRotation % 180 === 90 ? mapW : mapH
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
+    <div ref={containerRef} style={{ position: 'relative', width: '100%', height: containerH }}>
       <canvas
         ref={canvasRef}
         className={`stage-map ${activeDef || activeAoe ? 'stage-map--placing' : ''}`}
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: `translate(-50%, -50%) rotate(${stageRotation}deg)`,
+        }}
         width={mapW} height={mapH}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -970,6 +1058,7 @@ export function StageMap({
           onResize={handleResize}
           onOpacityChange={handleOpacity}
           onRotate={handleRotate}
+          onSetOutlineColor={handleSetOutlineColor}
           onAoeUpdate={handleAoeUpdate}
           onAoeRemove={handleAoeRemove}
           onRemove={handleRemove}

@@ -2,6 +2,16 @@ import { useEffect, useRef, useState } from 'react'
 import type { AoeBlendMode, AoeMarker } from '../../shared/types/aoe'
 import type { Effect, Token, TokenSize } from '../../shared/types/tokens'
 
+const OUTLINE_COLORS: { value: string | undefined; label: string; display: string }[] = [
+  { value: undefined,   label: 'No outline', display: 'transparent' },
+  { value: '#000000',   label: 'Black',      display: '#000000' },
+  { value: '#22cc44',   label: 'Green',      display: '#22cc44' },
+  { value: '#2266ff',   label: 'Blue',       display: '#2266ff' },
+  { value: '#ee2222',   label: 'Red',        display: '#ee2222' },
+  { value: '#ff8800',   label: 'Orange',     display: '#ff8800' },
+  { value: '#ffdd00',   label: 'Yellow',     display: '#ffdd00' },
+]
+
 export type ContextItem =
   | { type: 'token'; data: Token }
   | { type: 'effect'; data: Effect }
@@ -14,7 +24,8 @@ interface Props {
   onRename: (id: string, name: string, type: 'token' | 'effect') => void
   onResize: (id: string, size: TokenSize, type: 'token' | 'effect') => void
   onOpacityChange: (id: string, opacity: number) => void
-  onRotate?: (id: string) => void
+  onRotate?: (id: string, dir: 1 | -1) => void
+  onSetOutlineColor?: (id: string, color: string | undefined) => void
   onAoeUpdate?: (updated: AoeMarker) => void
   onAoeRemove?: (id: string) => void
   onRemove: (id: string, type: 'token' | 'effect') => void
@@ -28,7 +39,7 @@ const AOE_SHAPE_LABELS = { circle: 'Circle', rectangle: 'Rectangle', triangle: '
 
 export function ContextMenu({
   item, x, y,
-  onRename, onResize, onOpacityChange, onRotate,
+  onRename, onResize, onOpacityChange, onRotate, onSetOutlineColor,
   onAoeUpdate, onAoeRemove, onRemove, onClose,
 }: Props) {
   const menuRef = useRef<HTMLDivElement>(null)
@@ -38,6 +49,9 @@ export function ContextMenu({
   // Local state for live AOE edits (accumulates changes so they compose correctly)
   const [localAoe, setLocalAoe] = useState<AoeMarker | null>(
     isAoe ? (item.data as AoeMarker) : null,
+  )
+  const [localOutlineColor, setLocalOutlineColor] = useState<string | undefined>(
+    item.type === 'token' ? (item.data as Token).outlineColor : undefined,
   )
 
   function handleAoeChange(patch: Partial<AoeMarker>) {
@@ -116,9 +130,29 @@ export function ContextMenu({
       {item.type === 'token' && onRotate && (
         <>
           <div className="ctx-divider" />
-          <button className="ctx-item" onClick={() => { onRotate(id); onClose() }}>
-            Rotate 90°
-          </button>
+          <div className="ctx-group-label">Rotate</div>
+          <div className="ctx-size-row">
+            <button className="ctx-size-btn" onClick={() => { onRotate(id, -1); onClose() }} title="Rotate counterclockwise">↺ CCW</button>
+            <button className="ctx-size-btn" onClick={() => { onRotate(id, 1); onClose() }} title="Rotate clockwise">↻ CW</button>
+          </div>
+        </>
+      )}
+
+      {item.type === 'token' && onSetOutlineColor && (
+        <>
+          <div className="ctx-divider" />
+          <div className="ctx-group-label">Outline</div>
+          <div className="ctx-size-row" style={{ flexWrap: 'wrap', gap: '4px', paddingBottom: '2px' }}>
+            {OUTLINE_COLORS.map((c) => (
+              <button
+                key={c.label}
+                className={`entity-color-swatch${localOutlineColor === c.value ? ' entity-color-swatch--active' : ''}`}
+                style={{ background: c.display, border: c.value === undefined ? '1px dashed var(--border)' : undefined }}
+                onClick={() => { setLocalOutlineColor(c.value); onSetOutlineColor(id, c.value) }}
+                title={c.label}
+              />
+            ))}
+          </div>
         </>
       )}
 

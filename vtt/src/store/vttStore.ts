@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { AoeMarker } from '../shared/types/aoe'
+import type { BackgroundDef } from '../shared/types/background'
 import type { LayerName } from '../shared/types/ipc'
 import type { ShowcaseDef, ShowcaseInstance } from '../shared/types/showcase'
 import type { Effect, EffectDef, Token, TokenDef } from '../shared/types/tokens'
@@ -50,6 +51,16 @@ interface VttState {
   addShowcaseDef: (def: ShowcaseDef) => void
   removeShowcaseDef: (id: string) => void
   setActiveShowcase: (instance: ShowcaseInstance | null) => void
+
+  backgroundDefs: BackgroundDef[]
+  addBackgroundDef: (def: BackgroundDef) => void
+  removeBackgroundDef: (id: string) => void
+
+  rotationCooldownMs: number
+  setRotationCooldownMs: (ms: number) => void
+
+  tokenOutlineThicknessPx: number
+  setTokenOutlineThicknessPx: (px: number) => void
 }
 
 export const useVttStore = create<VttState>((set) => ({
@@ -65,6 +76,9 @@ export const useVttStore = create<VttState>((set) => ({
   showAffectedArea: false,
   showcaseDefs: [],
   activeShowcase: null,
+  backgroundDefs: [],
+  rotationCooldownMs: 250,
+  tokenOutlineThicknessPx: 2,
 
   setLayerVisible: (layer, visible) =>
     set((s) => ({ layers: { ...s.layers, [layer]: visible } })),
@@ -131,4 +145,13 @@ export const useVttStore = create<VttState>((set) => ({
     })),
 
   setActiveShowcase: (instance) => set({ activeShowcase: instance }),
+
+  addBackgroundDef: (def) =>
+    set((s) => ({ backgroundDefs: [...s.backgroundDefs, def] })),
+
+  removeBackgroundDef: (id) =>
+    set((s) => ({ backgroundDefs: s.backgroundDefs.filter((d) => d.id !== id) })),
+
+  setRotationCooldownMs: (ms) => set({ rotationCooldownMs: ms }),
+  setTokenOutlineThicknessPx: (px) => set({ tokenOutlineThicknessPx: px }),
 }))

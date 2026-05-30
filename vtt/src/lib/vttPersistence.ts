@@ -1,5 +1,6 @@
 import { load } from '@tauri-apps/plugin-store'
 import type { AoeMarker } from '../shared/types/aoe'
+import type { BackgroundDef } from '../shared/types/background'
 import type { ShowcaseDef, ShowcaseInstance } from '../shared/types/showcase'
 import type { Effect, EffectDef, Token, TokenDef } from '../shared/types/tokens'
 
@@ -12,6 +13,7 @@ export interface VttManifest {
   backgroundSrc: string
   showcaseDefs: ShowcaseDef[]
   activeShowcase: ShowcaseInstance | null
+  backgroundDefs: BackgroundDef[]
 }
 
 const STORE_PATH = 'vtt-manifest.json'
