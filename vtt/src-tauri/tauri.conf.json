@@ -1,6 +1,6 @@
 {
   "productName": "DM Toolkit VTT",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "identifier": "com.dmtoolkit.vtt",
   "build": {
     "frontendDist": "../dist",
@@ -12,7 +12,7 @@
     "windows": [
       {
         "label": "controller",
-        "title": "DM Toolkit VTT — Controller",
+        "title": "DM Toolkit VTT â€” Controller",
         "url": "/",
         "width": 900,
         "height": 640,
