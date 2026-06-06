@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
 # ── Lethality ─────────────────────────────────────────────────────────────────
@@ -207,16 +208,6 @@ class CombatRoleArchetypeOut(BaseModel):
     updated_at: datetime
 
 
-class EncounterTemplateOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    id: str
-    name: str
-    description: str | None
-    is_custom: bool
-    created_at: datetime
-    updated_at: datetime
-
-
 class EncounterTemplateSlotOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: str
@@ -226,6 +217,17 @@ class EncounterTemplateSlotOut(BaseModel):
     default_count: int
     is_required: bool
     sort_order: int
+
+
+class EncounterTemplateOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    name: str
+    description: str | None
+    is_custom: bool
+    created_at: datetime
+    updated_at: datetime
+    slots: list[EncounterTemplateSlotOut] | None = None
 
 
 class AbilityFlavorOut(BaseModel):
@@ -240,3 +242,97 @@ class AbilityFlavorOut(BaseModel):
 class AbilityFlavorCreate(BaseModel):
     name: str
     damage_type: str
+
+
+# ── Saved Monster Stat Block ──────────────────────────────────────────────────
+
+class MonsterStatBlockOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    name: str
+    creature_archetype_id: str | None
+    combat_role_archetype_id: str
+    gm_profile_id: str | None
+    is_boss: bool
+    level_tier: int
+    hp: int
+    ac: int
+    attack_bonus: int
+    save_dc: int
+    speed: int
+    str_score: int
+    dex_score: int
+    con_score: int
+    int_score: int
+    wis_score: int
+    cha_score: int
+    damage_immunities: list[str] | None
+    damage_resistances: list[str] | None
+    condition_immunities: list[str] | None
+    has_legendary_actions: bool
+    legendary_action_count: int
+    has_lair_actions: bool
+    actions: list[dict[str, Any]] | None
+    legendary_actions: list[dict[str, Any]] | None
+    lair_actions: list[dict[str, Any]] | None
+    is_saved_template: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+# ── Saved Encounter ───────────────────────────────────────────────────────────
+
+class SavedEncounterMonsterOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    count: int
+    sort_order: int
+    monster_stat_block: MonsterStatBlockOut
+
+
+class SavedEncounterSummaryOut(BaseModel):
+    id: str
+    name: str
+    difficulty: str
+    party_size: int
+    party_avg_level: int
+    expected_rounds: float
+    total_monster_count: int
+    created_at: datetime
+
+
+class SavedEncounterOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    name: str
+    difficulty: str
+    party_size: int
+    party_avg_level: int
+    party_avg_hp: float
+    party_total_hp: float
+    party_nova_damage: float
+    party_sustained_damage: float
+    expected_rounds: float
+    expected_rounds_min: float
+    expected_rounds_max: float
+    created_at: datetime
+    encounter_monsters: list[SavedEncounterMonsterOut]
+
+    @computed_field
+    @property
+    def total_monster_count(self) -> int:
+        return sum(m.count for m in self.encounter_monsters)
+
+
+class PagedEncountersOut(BaseModel):
+    items: list[SavedEncounterSummaryOut]
+    total: int
+    page: int
+    per_page: int
+
+
+class PagedTemplatesOut(BaseModel):
+    items: list[MonsterStatBlockOut]
+    total: int
+    page: int
+    per_page: int

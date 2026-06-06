@@ -1,0 +1,290 @@
+.cse-root {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ── Sub-tabs ── */
+.cse-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border);
+}
+
+.cse-tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  padding: 0.4rem 1rem;
+  font-size: 0.85rem;
+  font-family: var(--sans);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.cse-tab-btn:hover { color: var(--text); }
+.cse-tab-btn--active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+/* ── Ability score grid ── */
+.cse-score-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+}
+
+.cse-score-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.4rem;
+}
+
+.cse-score-abbr {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.cse-score-input {
+  width: 52px;
+  text-align: center;
+  padding: 0.25rem;
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  font-family: var(--mono);
+}
+
+.cse-score-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.cse-score-input--saving { border-color: var(--accent); opacity: 0.7; }
+
+.cse-score-mod {
+  font-size: 0.8rem;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-weight: 600;
+}
+
+/* ── Derived stats ── */
+.cse-derived {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+}
+
+.cse-derived-stat strong { color: var(--text-muted); font-weight: 600; }
+
+/* ── Combat abilities summary ── */
+.cse-summary {
+  display: flex;
+  gap: 1.5rem;
+  background: var(--bg-input);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.85rem;
+  font-size: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.cse-summary-stat strong { color: var(--text-muted); font-weight: 600; }
+
+/* ── Ability table ── */
+.cse-ability-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.cse-ability-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto auto auto auto;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg-input);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.6rem;
+  font-size: 0.82rem;
+}
+
+.cse-ability-name {
+  font-weight: 500;
+  color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cse-ability-type { font-size: 0.72rem; color: var(--text-muted); }
+.cse-ability-dice { font-family: var(--mono); color: var(--text); font-size: 0.78rem; }
+.cse-ability-avg  { font-family: var(--mono); color: var(--text-muted); font-size: 0.75rem; }
+
+.cse-ability-icons {
+  display: flex;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+}
+
+.cse-icon { padding: 0.1rem 0.25rem; border-radius: 3px; font-size: 0.68rem; font-weight: 700; }
+.cse-icon--nova    { background: #7c4bff22; color: var(--accent); }
+.cse-icon--sustain { background: #4caf8022; color: var(--success); }
+.cse-icon--bonus   { background: #e6a81722; color: #e6a817; }
+
+.cse-ability-btns { display: flex; gap: 0.2rem; }
+.cse-btn-sm {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.72rem;
+  padding: 0.15rem 0.35rem;
+}
+
+.cse-btn-sm:hover { border-color: var(--border); color: var(--text); }
+.cse-btn-sm--danger:hover { border-color: var(--danger); color: var(--danger); }
+
+/* ── Add/edit form ── */
+.cse-form {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.cse-form-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-heading);
+  margin-bottom: -0.25rem;
+}
+
+.cse-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.55rem 0.75rem;
+}
+
+.cse-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.cse-field--full { grid-column: 1 / -1; }
+
+.cse-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cse-input, .cse-select, .cse-textarea {
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.82rem;
+  font-family: var(--sans);
+  padding: 0.3rem 0.4rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.cse-input:focus, .cse-select:focus, .cse-textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.cse-textarea { resize: vertical; min-height: 60px; }
+
+.cse-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-top: 0.6rem;
+}
+
+.cse-checkbox-label { font-size: 0.82rem; color: var(--text); }
+
+.cse-preview {
+  background: var(--bg-input);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.7rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+}
+
+.cse-preview strong { color: var(--text); }
+
+.cse-form-actions {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+
+.cse-add-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-family: var(--sans);
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius);
+}
+
+.cse-add-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.cse-save-btn {
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-family: var(--sans);
+  padding: 0.35rem 0.85rem;
+}
+
+.cse-save-btn:hover:not(:disabled) { background: var(--accent-hover); }
+.cse-save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.cse-cancel-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-family: var(--sans);
+  padding: 0.35rem 0.75rem;
+}
+
+.cse-loading { color: var(--text-muted); font-size: 0.82rem; font-style: italic; }
+.cse-empty   { color: var(--text-muted); font-size: 0.82rem; }
+
+@media (max-width: 600px) {
+  .cse-score-grid { grid-template-columns: repeat(3, 1fr); }
+  .cse-form-grid  { grid-template-columns: 1fr; }
+  .cse-ability-row { grid-template-columns: 1fr auto auto; }
+  .cse-ability-icons, .cse-ability-type, .cse-ability-avg { display: none; }
+}

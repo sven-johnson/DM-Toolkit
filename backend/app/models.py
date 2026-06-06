@@ -6,6 +6,7 @@ from sqlalchemy import (
     CheckConstraint,
     Date,
     DateTime,
+    Enum,
     Float,
     ForeignKey,
     Integer,
@@ -25,8 +26,12 @@ class Campaign(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    rule_system_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("rule_systems.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
+    rule_system: Mapped["RuleSystem | None"] = relationship("RuleSystem")
     storylines: Mapped[list["Storyline"]] = relationship(
         "Storyline",
         back_populates="campaign",
@@ -175,8 +180,16 @@ class SceneEnemy(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    saved_encounter_monster_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("saved_encounter_monsters.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     scene: Mapped["Scene"] = relationship("Scene", back_populates="enemies")
+    saved_encounter_monster: Mapped["SavedEncounterMonster | None"] = relationship(
+        "SavedEncounterMonster"
+    )
 
 
 class SceneShopItem(Base):
@@ -261,6 +274,15 @@ class Character(Base):
         "Roll",
         back_populates="character",
         cascade="all, delete-orphan",
+    )
+    combat_stats: Mapped[list["CharacterStat"]] = relationship(
+        "CharacterStat", back_populates="character", cascade="all, delete-orphan"
+    )
+    combat_skills: Mapped[list["CharacterSkill"]] = relationship(
+        "CharacterSkill", back_populates="character", cascade="all, delete-orphan"
+    )
+    combat_turns: Mapped[list["CharacterCombatTurn"]] = relationship(
+        "CharacterCombatTurn", back_populates="character", cascade="all, delete-orphan"
     )
 
 
@@ -867,3 +889,210 @@ class SavedEncounterMonster(Base):
 
     saved_encounter: Mapped["SavedEncounter"] = relationship("SavedEncounter", back_populates="encounter_monsters")
     monster_stat_block: Mapped["MonsterStatBlock"] = relationship("MonsterStatBlock", back_populates="encounter_uses")
+
+
+# ── Rule System Abstraction ───────────────────────────────────────────────────
+
+class RuleSystem(Base):
+    __tablename__ = "rule_systems"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    slug: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    version: Mapped[str] = mapped_column(String(64), nullable=False)
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    stat_definitions: Mapped[list["StatDefinition"]] = relationship(
+        "StatDefinition", back_populates="rule_system", cascade="all, delete-orphan"
+    )
+    skill_definitions: Mapped[list["SkillDefinition"]] = relationship(
+        "SkillDefinition", back_populates="rule_system", cascade="all, delete-orphan"
+    )
+    combat_ability_definitions: Mapped[list["CombatAbilityDefinition"]] = relationship(
+        "CombatAbilityDefinition", back_populates="rule_system", cascade="all, delete-orphan"
+    )
+
+
+class StatDefinition(Base):
+    __tablename__ = "stat_definitions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    rule_system_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("rule_systems.id", ondelete="CASCADE"), nullable=False
+    )
+    slug: Mapped[str] = mapped_column(String(64), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    abbreviation: Mapped[str] = mapped_column(String(16), nullable=False)
+    stat_type: Mapped[str] = mapped_column(
+        Enum("ability_score", "derived", "resource", "custom", name="stat_type_enum"),
+        nullable=False,
+    )
+    has_modifier: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    modifier_formula: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("rule_system_id", "slug", name="uq_stat_definition_rs_slug"),
+    )
+
+    rule_system: Mapped["RuleSystem"] = relationship("RuleSystem", back_populates="stat_definitions")
+    governed_skills: Mapped[list["SkillDefinition"]] = relationship(
+        "SkillDefinition", back_populates="governing_stat"
+    )
+
+
+class SkillDefinition(Base):
+    __tablename__ = "skill_definitions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    rule_system_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("rule_systems.id", ondelete="CASCADE"), nullable=False
+    )
+    slug: Mapped[str] = mapped_column(String(64), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    governing_stat_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("stat_definitions.id", ondelete="SET NULL"), nullable=True
+    )
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("rule_system_id", "slug", name="uq_skill_definition_rs_slug"),
+    )
+
+    rule_system: Mapped["RuleSystem"] = relationship("RuleSystem", back_populates="skill_definitions")
+    governing_stat: Mapped["StatDefinition | None"] = relationship(
+        "StatDefinition", back_populates="governed_skills"
+    )
+
+
+class CombatAbilityDefinition(Base):
+    __tablename__ = "combat_ability_definitions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    rule_system_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("rule_systems.id", ondelete="CASCADE"), nullable=False
+    )
+    slug: Mapped[str] = mapped_column(String(64), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    ability_category: Mapped[str] = mapped_column(
+        Enum("attack", "spell", "feature", "cantrip", "resource", name="ability_category_enum"),
+        nullable=False,
+    )
+    is_nova_eligible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_sustained_eligible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("rule_system_id", "slug", name="uq_combat_ability_definition_rs_slug"),
+    )
+
+    rule_system: Mapped["RuleSystem"] = relationship("RuleSystem", back_populates="combat_ability_definitions")
+
+
+# ── Character Combat Tables ───────────────────────────────────────────────────
+
+class CharacterStat(Base):
+    __tablename__ = "character_stats"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    character_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("characters.id", ondelete="CASCADE"), nullable=False
+    )
+    stat_definition_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("stat_definitions.id", ondelete="CASCADE"), nullable=False
+    )
+    value: Mapped[int] = mapped_column(Integer, nullable=False)
+    override_modifier: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("character_id", "stat_definition_id", name="uq_character_stat"),
+    )
+
+    character: Mapped["Character"] = relationship("Character", back_populates="combat_stats")
+    stat_definition: Mapped["StatDefinition"] = relationship("StatDefinition")
+
+
+class CharacterSkill(Base):
+    __tablename__ = "character_skills"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    character_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("characters.id", ondelete="CASCADE"), nullable=False
+    )
+    skill_definition_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("skill_definitions.id", ondelete="CASCADE"), nullable=False
+    )
+    proficiency_type: Mapped[str] = mapped_column(
+        Enum("none", "half", "full", "expertise", name="skill_proficiency_enum"),
+        nullable=False,
+        default="none",
+    )
+    additional_bonus: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("character_id", "skill_definition_id", name="uq_character_skill"),
+    )
+
+    character: Mapped["Character"] = relationship("Character", back_populates="combat_skills")
+    skill_definition: Mapped["SkillDefinition"] = relationship("SkillDefinition")
+
+
+# ── Turn-based damage templates ───────────────────────────────────────────────
+
+class CharacterCombatTurn(Base):
+    __tablename__ = "character_combat_turns"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    character_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("characters.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    turn_type: Mapped[str] = mapped_column(
+        Enum("nova", "sustained", "variant", name="turn_type_enum"),
+        nullable=False,
+    )
+    is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    character: Mapped["Character"] = relationship("Character", back_populates="combat_turns")
+    line_items: Mapped[list["CharacterCombatTurnLineItem"]] = relationship(
+        "CharacterCombatTurnLineItem",
+        back_populates="turn",
+        cascade="all, delete-orphan",
+        order_by="CharacterCombatTurnLineItem.sort_order",
+    )
+
+
+class CharacterCombatTurnLineItem(Base):
+    __tablename__ = "character_combat_turn_line_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    turn_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("character_combat_turns.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    dice_notation: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    average_damage: Mapped[float] = mapped_column(Float, nullable=False)
+    is_bonus_action: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    turn: Mapped["CharacterCombatTurn"] = relationship("CharacterCombatTurn", back_populates="line_items")

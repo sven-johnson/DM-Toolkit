@@ -1125,6 +1125,12 @@ body {
   min-height: 0;
 }
 
+.stage-map-container {
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+}
+
 /* ── Stage Modals ── */
 .stage-modal {
   position: absolute;

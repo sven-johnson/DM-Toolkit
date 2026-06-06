@@ -1,0 +1,396 @@
+/* ── Sub-tabs ── */
+.st-subtabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 1.25rem;
+}
+
+.st-subtab-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  padding: 0.45rem 1rem;
+  font-size: 0.85rem;
+  font-family: var(--sans);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.st-subtab-btn:hover { color: var(--text); }
+
+.st-subtab-btn--active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Filter bar ── */
+.st-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.st-filter-input {
+  flex: 1 1 180px;
+  padding: 0.35rem 0.6rem;
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.84rem;
+  font-family: var(--sans);
+}
+
+.st-filter-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.st-filter-select,
+.st-filter-number {
+  padding: 0.35rem 0.5rem;
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.84rem;
+  font-family: var(--sans);
+  cursor: pointer;
+}
+
+.st-filter-select { min-width: 140px; }
+.st-filter-number { width: 80px; }
+
+/* ── Encounter list ── */
+.st-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.st-enc-row {
+  border-bottom: 1px solid var(--border);
+}
+
+.st-enc-row:last-child { border-bottom: none; }
+
+.st-enc-row-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.st-enc-row-header:hover { background: color-mix(in srgb, var(--accent) 5%, var(--bg-card)); }
+.st-enc-row--expanded .st-enc-row-header { background: color-mix(in srgb, var(--accent) 8%, var(--bg-card)); }
+
+.st-enc-chevron {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+
+.st-enc-row--expanded .st-enc-chevron { transform: rotate(90deg); }
+
+.st-enc-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-heading);
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.st-enc-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.st-diff-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.st-enc-detail-text {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.st-enc-date {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.st-delete-btn {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--radius);
+  flex-shrink: 0;
+}
+
+.st-delete-btn:hover { color: var(--danger); border-color: var(--danger); }
+
+/* ── Encounter detail ── */
+.st-enc-detail {
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  padding: 1rem 1.25rem;
+}
+
+.st-enc-detail-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.84rem;
+}
+
+.st-enc-detail-stat strong { color: var(--text-muted); font-weight: 600; }
+
+.st-enc-detail-blocks {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.st-enc-detail-footer {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.st-reopen-btn {
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-family: var(--sans);
+  padding: 0.4rem 0.9rem;
+}
+
+.st-reopen-btn:hover { background: var(--accent-hover); }
+
+/* Loading in detail */
+.st-detail-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  padding: 0.5rem 0;
+}
+
+.st-spinner {
+  width: 14px; height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: st-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes st-spin { to { transform: rotate(360deg); } }
+
+/* ── Pagination ── */
+.st-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.st-page-btns { display: flex; gap: 0.4rem; }
+
+.st-page-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: var(--radius);
+  font-family: var(--sans);
+}
+
+.st-page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.st-page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ── Templates grid ── */
+.st-tmpl-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+.st-tmpl-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.st-tmpl-card:hover { border-color: var(--accent); }
+
+.st-tmpl-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.st-tmpl-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-heading);
+  flex: 1;
+}
+
+.st-tmpl-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.st-tmpl-badge {
+  font-size: 0.65rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 99px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.st-tmpl-badge--boss { background: #b8860b; color: #fffbe6; border-color: #b8860b; }
+
+.st-tmpl-stats {
+  font-size: 0.77rem;
+  color: var(--text-muted);
+  display: flex;
+  gap: 0.6rem;
+}
+
+.st-tmpl-delete-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 0.15rem 0.3rem;
+  border-radius: var(--radius);
+  flex-shrink: 0;
+}
+
+.st-tmpl-delete-btn:hover { color: var(--danger); }
+
+/* ── Template detail modal ── */
+.st-tmpl-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 200;
+  padding: 2rem 1rem;
+  overflow-y: auto;
+}
+
+.st-tmpl-modal {
+  width: min(520px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.st-tmpl-modal-close {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.82rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius);
+  align-self: flex-end;
+}
+
+.st-tmpl-modal-close:hover { color: var(--text); }
+
+/* ── Empty state ── */
+.st-empty {
+  padding: 3rem 1rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.st-empty-icon { font-size: 2rem; opacity: 0.4; }
+.st-empty-title { font-size: 0.95rem; font-weight: 600; color: var(--text); }
+.st-empty-sub { font-size: 0.82rem; color: var(--text-muted); }
+
+.st-empty-cta {
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-family: var(--sans);
+  padding: 0.45rem 1.1rem;
+  margin-top: 0.25rem;
+}
+
+.st-empty-cta:hover { background: var(--accent-hover); }
+
+/* ── Loading / error ── */
+.st-loading, .st-error {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 640px) {
+  .st-enc-meta { gap: 0.35rem; }
+  .st-enc-detail-blocks { grid-template-columns: 1fr; }
+  .st-tmpl-grid { grid-template-columns: 1fr; }
+}

@@ -16,6 +16,7 @@ import { WikiArticlePage } from './pages/WikiArticlePage'
 import { WikiEditorPage } from './pages/WikiEditorPage'
 import { UserSettingsPage } from './pages/UserSettingsPage'
 import { DownloadPage } from './pages/DownloadPage'
+import { MonsterFactoryPage } from './pages/MonsterFactory'
 import { Nav } from './components/Nav'
 
 const queryClient = new QueryClient({
@@ -178,6 +179,14 @@ function AppLayout() {
           element={
             <RequireAuth>
               <UserSettingsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/monster-factory"
+          element={
+            <RequireAuth>
+              <MonsterFactoryPage />
             </RequireAuth>
           }
         />

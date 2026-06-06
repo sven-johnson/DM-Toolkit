@@ -1,0 +1,613 @@
+/* ============================================================
+   Encounter Output — shared styles for stat block, summary,
+   and encounter view.
+   ============================================================ */
+
+/* ── Monster stat block card ── */
+.msb-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  break-inside: avoid;
+}
+
+/* Header */
+.msb-header {
+  background: color-mix(in srgb, var(--accent) 18%, var(--bg-card));
+  border-bottom: 2px solid var(--accent);
+  padding: 0.75rem 1rem;
+}
+
+.msb-name-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.3rem;
+}
+
+.msb-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  margin: 0;
+  flex: 1 1 auto;
+}
+
+.msb-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+.msb-badge--boss {
+  background: #b8860b;
+  color: #fffbe6;
+}
+
+.msb-badge--count {
+  background: var(--bg-input);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.msb-subtitle {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.msb-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.msb-chip {
+  font-size: 0.75rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.15rem 0.5rem;
+  color: var(--text);
+}
+
+.msb-chip strong {
+  color: var(--accent);
+}
+
+/* Body */
+.msb-body {
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+/* Ability scores */
+.msb-ability-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.25rem;
+  text-align: center;
+}
+
+.msb-ability-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.msb-ability-name {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.msb-ability-score {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.msb-ability-mod {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* Section divider */
+.msb-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0;
+}
+
+/* Combat stats row */
+.msb-combat-stats {
+  font-size: 0.82rem;
+  color: var(--text);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1rem;
+}
+
+.msb-combat-stat strong {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* Resistances / immunities */
+.msb-resist-section {
+  font-size: 0.8rem;
+}
+
+.msb-resist-row {
+  margin-bottom: 0.2rem;
+  line-height: 1.4;
+}
+
+.msb-resist-label {
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+/* Traits */
+.msb-trait-block {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin-bottom: 0.3rem;
+}
+
+/* Actions */
+.msb-section-heading {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  margin-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.2rem;
+}
+
+.msb-multiattack {
+  font-size: 0.82rem;
+  font-style: italic;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.msb-action {
+  margin-bottom: 0.55rem;
+}
+
+.msb-action-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.5rem;
+  font-size: 0.82rem;
+  margin-bottom: 0.15rem;
+}
+
+.msb-action-name {
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.msb-action-meta {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.msb-action-desc {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+/* Legendary action intro */
+.msb-legendary-intro {
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+/* Math detail accordion */
+.msb-math-details {
+  font-size: 0.78rem;
+}
+
+.msb-math-details summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  padding: 0.2rem 0;
+  user-select: none;
+}
+
+.msb-math-details summary:hover {
+  color: var(--text);
+}
+
+.msb-math-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+}
+
+.msb-math-table td {
+  padding: 0.15rem 0.3rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.msb-math-table td:first-child {
+  font-weight: 600;
+  color: var(--text);
+  width: 40%;
+}
+
+/* ── Inline editing ── */
+.msb-editable {
+  cursor: pointer;
+  border-bottom: 1px dashed transparent;
+  transition: border-color 0.15s;
+  display: inline;
+}
+
+.msb-editable:hover {
+  border-bottom-color: var(--accent);
+}
+
+.msb-edit-input {
+  background: none;
+  border: none;
+  border-bottom: 2px solid var(--accent);
+  color: inherit;
+  font: inherit;
+  outline: none;
+  min-width: 120px;
+  padding: 0;
+}
+
+/* ── Encounter summary panel ── */
+.esp-root {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+}
+
+.esp-top-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.esp-diff-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #fff;
+}
+
+.esp-stat-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.5rem;
+  font-size: 0.85rem;
+}
+
+.esp-stat strong {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.esp-warnings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+}
+
+.esp-warning-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  background: color-mix(in srgb, #e6a817 10%, var(--bg-card));
+  border: 1px solid color-mix(in srgb, #e6a817 30%, var(--border));
+  border-radius: var(--radius);
+  padding: 0.45rem 0.55rem;
+  font-size: 0.8rem;
+}
+
+.esp-warning-icon {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+}
+
+.esp-warning-text { flex: 1; }
+
+.esp-warning-dismiss {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.8rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.esp-warning-dismiss:hover { color: var(--text); }
+
+/* ── Generated encounter view ── */
+.gev-root {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Action bar */
+.gev-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 10;
+}
+
+.gev-btn {
+  padding: 0.4rem 0.9rem;
+  border-radius: var(--radius);
+  font-size: 0.84rem;
+  font-family: var(--sans);
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.gev-btn:hover { border-color: var(--accent); }
+
+.gev-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.gev-btn--primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+.gev-btn--danger { color: var(--danger); }
+.gev-btn--danger:hover { border-color: var(--danger); }
+
+.gev-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Inline save input */
+.gev-save-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.gev-save-name-input {
+  padding: 0.35rem 0.6rem;
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.84rem;
+  font-family: var(--sans);
+  width: 200px;
+}
+
+.gev-save-name-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Stat blocks grid */
+.gev-stat-blocks {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+/* Saving overlay */
+.gev-saving-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+}
+
+.gev-saving-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.gev-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: gev-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes gev-spin { to { transform: rotate(360deg); } }
+
+/* Template modal */
+.gev-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.gev-modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  width: min(520px, 94vw);
+  max-height: 85vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.gev-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gev-modal-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-heading);
+}
+
+.gev-modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0.15rem 0.3rem;
+}
+
+.gev-modal-close:hover { color: var(--text); }
+
+.gev-template-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.gev-template-name-input {
+  flex: 1;
+  padding: 0.3rem 0.5rem;
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.82rem;
+  font-family: var(--sans);
+}
+
+.gev-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .gev-stat-blocks {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================
+   Print styles
+   ============================================================ */
+@media print {
+  /* Hide chrome */
+  nav,
+  .gev-action-bar,
+  .esp-root,
+  .gev-saving-overlay,
+  .gev-modal-overlay {
+    display: none !important;
+  }
+
+  /* Page setup */
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 11pt;
+    font-family: serif;
+  }
+
+  .gev-root {
+    gap: 0;
+  }
+
+  .gev-stat-blocks {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .msb-card {
+    border: 1px solid #999 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    color: #000 !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 1rem;
+  }
+
+  .msb-header {
+    background: #f5f5f5 !important;
+    border-bottom-color: #999 !important;
+  }
+
+  .msb-name,
+  .msb-section-heading,
+  .msb-action-name,
+  .msb-ability-score {
+    color: #000 !important;
+  }
+
+  .msb-subtitle,
+  .msb-action-desc,
+  .msb-action-meta,
+  .msb-ability-mod,
+  .msb-ability-name,
+  .msb-legendary-intro,
+  .msb-combat-stat strong,
+  .msb-resist-label {
+    color: #444 !important;
+  }
+}

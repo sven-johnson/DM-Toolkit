@@ -1,3 +1,12 @@
+export interface StatBlockSummary {
+  id: string
+  name: string
+  hp: number
+  ac: number
+  is_boss: boolean
+  combat_role_name: string
+}
+
 export interface Campaign {
   id: string
   name: string
@@ -44,6 +53,8 @@ export interface SceneEnemy {
   name: string
   quantity: number
   order_index: number
+  saved_encounter_monster_id: string | null
+  stat_block_summary: StatBlockSummary | null
 }
 
 export type Currency = 'copper' | 'silver' | 'gold'
@@ -319,4 +330,128 @@ export interface StorylineImportResult {
   scenes_created: number
   scenes_updated: number
   errors: string[]
+}
+
+// ── Combat stats types ────────────────────────────────────────────────────────
+
+export interface RuleSystemBrief {
+  id: number
+  slug: string
+  name: string
+  version: string
+  is_default: boolean
+}
+
+export interface CampaignDetail extends Campaign {
+  rule_system: RuleSystemBrief | null
+}
+
+export interface StatDefinition {
+  id: number
+  slug: string
+  name: string
+  abbreviation: string
+  stat_type: string
+  has_modifier: boolean
+  modifier_formula: string | null
+  sort_order: number
+}
+
+export interface StatOut {
+  stat_definition: StatDefinition
+  value: number
+  computed_modifier: number
+}
+
+// ── Combat turn types ─────────────────────────────────────────────────────────
+
+export type TurnType = 'nova' | 'sustained' | 'variant'
+
+export interface TurnLineItemSummary {
+  id: number
+  name: string
+  dice_notation: string | null
+  average_damage: number
+  is_bonus_action: boolean
+  notes: string | null
+  sort_order: number
+}
+
+export interface CharacterTurnSummary {
+  id: number
+  name: string
+  turn_type: TurnType
+  is_primary: boolean
+  notes: string | null
+  sort_order: number
+  line_items: TurnLineItemSummary[]
+  turn_total: number
+}
+
+export interface CreateTurnInput {
+  name: string
+  turn_type: TurnType
+  is_primary?: boolean
+  notes?: string | null
+  sort_order?: number
+}
+
+export type UpdateTurnInput = CreateTurnInput
+
+export interface CreateLineItemInput {
+  name: string
+  dice_notation?: string | null
+  average_damage: number
+  is_bonus_action?: boolean
+  notes?: string | null
+  sort_order?: number
+}
+
+export type UpdateLineItemInput = CreateLineItemInput
+
+export interface ReorderItemInput {
+  id: number
+  sort_order: number
+}
+
+export interface CharacterProfileBrief {
+  character_id: string
+  character_name: string
+  max_hp: number
+  armor_class: number
+  nova_damage: number
+  sustained_damage_per_round: number
+  proficiency_bonus: number
+  level: number
+}
+
+export interface PartySummaryOut {
+  campaign_id: string
+  rule_system_slug: string
+  party_size: number
+  avg_level: number
+  avg_hp: number
+  total_hp: number
+  lowest_hp: number
+  avg_ac: number
+  party_nova: number
+  party_sustained: number
+  has_complete_data: boolean
+  incomplete_characters: string[]
+  characters: CharacterProfileBrief[]
+}
+
+export interface CharacterCombatProfileOut {
+  character_id: string
+  character_name: string
+  rule_system_slug: string
+  max_hp: number
+  armor_class: number
+  stats: Record<string, number>
+  modifiers: Record<string, number>
+  skills: Record<string, string>
+  nova_damage: number
+  sustained_damage_per_round: number
+  proficiency_bonus: number
+  level: number
 }

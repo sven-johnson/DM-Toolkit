@@ -1,0 +1,241 @@
+.ew-root {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Step indicator ── */
+.ew-step-indicator {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 1.75rem;
+  padding: 0 0.25rem;
+}
+
+.ew-step-wrapper {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.ew-step-wrapper:last-child {
+  flex: 0;
+}
+
+.ew-step-sep {
+  flex: 1;
+  height: 2px;
+  background: var(--border);
+  margin: 0 0.25rem;
+  margin-top: 14px; /* align with dot centre */
+  align-self: flex-start;
+}
+
+.ew-step-sep--done {
+  background: var(--accent);
+}
+
+.ew-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  background: none;
+  border: none;
+  cursor: default;
+  padding: 0;
+  min-width: 56px;
+}
+
+.ew-step--done {
+  cursor: pointer;
+}
+
+.ew-step--done:hover .ew-step-dot {
+  opacity: 0.85;
+}
+
+.ew-step-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: var(--bg-input);
+  border: 2px solid var(--border);
+  color: var(--text-muted);
+  transition: background 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.ew-step--active .ew-step-dot {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.ew-step--done .ew-step-dot {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.ew-step-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  text-align: center;
+}
+
+.ew-step--active .ew-step-label {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.ew-step--done .ew-step-label {
+  color: var(--accent);
+}
+
+/* ── Step body ── */
+.ew-step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Step footer ── */
+.ew-step-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 1rem 0 0;
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  position: sticky;
+  bottom: 0;
+  background: var(--bg);
+  z-index: 10;
+}
+
+.ew-next-btn {
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-family: var(--sans);
+  padding: 0.5rem 1.25rem;
+  transition: background 0.15s;
+}
+
+.ew-next-btn:hover:not(:disabled) { background: var(--accent-hover); }
+
+.ew-next-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ew-back-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-family: var(--sans);
+  padding: 0.5rem 0.9rem;
+}
+
+.ew-back-btn:hover { border-color: var(--accent); }
+
+/* ── Error message ── */
+.ew-error-msg {
+  background: color-mix(in srgb, var(--danger) 10%, var(--bg-card));
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, var(--border));
+  border-radius: var(--radius);
+  color: var(--danger);
+  font-size: 0.84rem;
+  padding: 0.6rem 0.85rem;
+  margin-top: 0.75rem;
+}
+
+/* ── Save toast ── */
+.ew-save-toast {
+  background: var(--success);
+  color: #fff;
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.ew-toast-link {
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.82rem;
+  text-decoration: underline;
+  padding: 0;
+  white-space: nowrap;
+  font-family: var(--sans);
+}
+
+.ew-toast-link:hover { opacity: 0.85; }
+
+/* ── Generation loading overlay ── */
+.ew-generate-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 400;
+}
+
+.ew-generate-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  min-width: 220px;
+  text-align: center;
+}
+
+.ew-generate-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: ew-spin 0.75s linear infinite;
+}
+
+@keyframes ew-spin { to { transform: rotate(360deg); } }
+
+.ew-generate-label {
+  font-size: 0.95rem;
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  .ew-step-label { display: none; }
+  .ew-step { min-width: 28px; }
+}

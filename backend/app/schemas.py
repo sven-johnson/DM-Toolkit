@@ -2,7 +2,9 @@ from datetime import date as DateType
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from typing import Any
+
+from pydantic import BaseModel, model_validator
 
 
 # ---------------------------------------------------------------------------
@@ -244,11 +246,22 @@ class CheckWithRolls(CheckOut):
 class SceneEnemyCreate(BaseModel):
     name: str = ""
     quantity: int = 1
+    saved_encounter_monster_id: Optional[str] = None
 
 
 class SceneEnemyUpdate(BaseModel):
     name: Optional[str] = None
     quantity: Optional[int] = None
+    saved_encounter_monster_id: Optional[str] = None
+
+
+class StatBlockSummary(BaseModel):
+    id: str
+    name: str
+    hp: int
+    ac: int
+    is_boss: bool
+    combat_role_name: str
 
 
 class SceneEnemyOut(BaseModel):
@@ -257,8 +270,43 @@ class SceneEnemyOut(BaseModel):
     name: str
     quantity: int
     order_index: int
+    saved_encounter_monster_id: Optional[str] = None
+    stat_block_summary: Optional[StatBlockSummary] = None
 
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _extract_stat_block_summary(cls, data: Any) -> Any:
+        # Only process ORM objects (dicts pass through unchanged)
+        if isinstance(data, dict) or not hasattr(data, "__tablename__"):
+            return data
+
+        result: dict[str, Any] = {
+            "id": data.id,
+            "scene_id": data.scene_id,
+            "name": data.name,
+            "quantity": data.quantity,
+            "order_index": data.order_index,
+            "saved_encounter_monster_id": data.saved_encounter_monster_id,
+            "stat_block_summary": None,
+        }
+
+        sem = getattr(data, "saved_encounter_monster", None)
+        if sem is not None:
+            sb = getattr(sem, "monster_stat_block", None)
+            if sb is not None:
+                role = getattr(sb, "combat_role", None)
+                result["stat_block_summary"] = {
+                    "id": sb.id,
+                    "name": sb.name,
+                    "hp": sb.hp,
+                    "ac": sb.ac,
+                    "is_boss": sb.is_boss,
+                    "combat_role_name": role.name if role else "—",
+                }
+
+        return result
 
 
 class SceneShopItemCreate(BaseModel):
@@ -398,12 +446,23 @@ class SessionWithScenes(SessionOut):
 # ---------------------------------------------------------------------------
 
 
+class RuleSystemOut(BaseModel):
+    id: int
+    slug: str
+    name: str
+    version: str
+    is_default: bool
+
+    model_config = {"from_attributes": True}
+
+
 class CampaignCreate(BaseModel):
     name: str
 
 
 class CampaignUpdate(BaseModel):
     name: Optional[str] = None
+    rule_system_id: Optional[int] = None
 
 
 class CampaignOut(BaseModel):
@@ -411,6 +470,7 @@ class CampaignOut(BaseModel):
     name: str
     created_at: datetime
     my_role: Optional[str] = None
+    rule_system: Optional[RuleSystemOut] = None
 
     model_config = {"from_attributes": True}
 

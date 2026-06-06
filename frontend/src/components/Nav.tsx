@@ -48,6 +48,12 @@ export function Nav() {
                 >
                   Characters
                 </Link>
+                <Link
+                  to="/monster-factory"
+                  className={`nav-link${isActive('/monster-factory') ? ' active' : ''}`}
+                >
+                  Monster Factory
+                </Link>
               </>
             )}
             <Link

@@ -458,15 +458,17 @@ export function Controller() {
                   title="Rotate view 90° clockwise"
                 >↻</button>
               </div>
-              <StageMap
-                playerReady={playerReady}
-                activeDef={activeDef}
-                activeType={activeType}
-                onDeactivate={deactivateDef}
-                activeAoe={activeAoe}
-                onAoeDeactivate={() => setActiveAoe(null)}
-                stageRotation={stageRotation}
-              />
+              <div className="stage-map-container">
+                <StageMap
+                  playerReady={playerReady}
+                  activeDef={activeDef}
+                  activeType={activeType}
+                  onDeactivate={deactivateDef}
+                  activeAoe={activeAoe}
+                  onAoeDeactivate={() => setActiveAoe(null)}
+                  stageRotation={stageRotation}
+                />
+              </div>
 
               <section className="control-section">
                 <h2>Scene Presets</h2>

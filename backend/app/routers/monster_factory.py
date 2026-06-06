@@ -1,6 +1,8 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, selectinload
 
 from ..database import get_db
@@ -16,7 +18,10 @@ from ..models import (
     HitRateSettings,
     LethalitySettings,
     MinionSettings,
+    MonsterStatBlock,
     SavingThrowSettings,
+    SavedEncounter,
+    SavedEncounterMonster,
     WarningSettings,
 )
 from ..monster_factory_schemas import (
@@ -29,9 +34,56 @@ from ..monster_factory_schemas import (
     GMProfileCreate,
     GMProfileOut,
     GMProfileUpdate,
+    MonsterStatBlockOut,
+    PagedEncountersOut,
+    PagedTemplatesOut,
     PresetOut,
     ProfileFromPresetIn,
+    SavedEncounterMonsterOut,
+    SavedEncounterOut,
+    SavedEncounterSummaryOut,
 )
+from ..monster_factory.calculators.encounter_orchestrator import (
+    EncounterCompositionSlot,
+    GenerateEncounterInput,
+    GeneratedEncounter,
+    GeneratedMonster,
+    generate_encounter,
+    rebalance_encounter,
+)
+from ..monster_factory.calculators.party_profile import PartyMember
+from ..monster_factory.export.dndbeyond import DnDBeyondExport, generate_dndbeyond_export
+
+
+# ── Request schemas for new endpoints ─────────────────────────────────────────
+
+class ExportDnDBeyondIn(BaseModel):
+    monster: GeneratedMonster
+
+
+class RebalanceChangesIn(BaseModel):
+    composition: list[EncounterCompositionSlot] | None = None
+    party_members: list[PartyMember] | None = None
+    party_level: int | None = Field(None, ge=1, le=20)
+    difficulty: str | None = None
+
+
+class RebalanceEncounterIn(BaseModel):
+    existing_encounter: GeneratedEncounter
+    changes: RebalanceChangesIn
+    gm_profile_id: str
+
+
+class SaveEncounterIn(BaseModel):
+    encounter: GeneratedEncounter
+    name: str
+    gm_profile_id: str | None = None
+
+
+class SaveMonsterTemplateIn(BaseModel):
+    monster: GeneratedMonster
+    name: str
+    party_avg_level: int = Field(5, ge=1, le=20)
 
 router = APIRouter()
 
@@ -413,3 +465,338 @@ def delete_ability_flavor(flavor_id: str, db: Session = Depends(get_db)) -> Resp
     db.delete(flavor)
     db.commit()
     return Response(status_code=204)
+
+
+# ── Encounter template detail (full with slots) ───────────────────────────────
+
+@router.get("/encounter-templates/{template_id}", response_model=EncounterTemplateOut)
+def get_encounter_template(template_id: str, db: Session = Depends(get_db)) -> EncounterTemplateOut:
+    template = (
+        db.query(EncounterTemplate)
+        .options(selectinload(EncounterTemplate.slots).selectinload(EncounterTemplateSlot.combat_role))
+        .filter(EncounterTemplate.id == template_id)
+        .first()
+    )
+    if not template:
+        raise HTTPException(status_code=404, detail="Encounter template not found")
+    return template
+
+
+# ── Calculation endpoints (no persistence) ───────────────────────────────────
+
+@router.post("/generate", response_model=GeneratedEncounter)
+def generate(body: GenerateEncounterInput, db: Session = Depends(get_db)):
+    try:
+        return generate_encounter(body, db)
+    except ValueError as exc:
+        return _mf_error(400, "INVALID_INPUT", str(exc))
+
+
+@router.post("/rebalance", response_model=GeneratedEncounter)
+def rebalance(body: RebalanceEncounterIn, db: Session = Depends(get_db)):
+    try:
+        return rebalance_encounter(
+            existing=body.existing_encounter,
+            new_composition=body.changes.composition,
+            new_party_members=body.changes.party_members,
+            new_party_level=body.changes.party_level,
+            new_difficulty=body.changes.difficulty,
+            gm_profile_id=body.gm_profile_id,
+            db=db,
+        )
+    except ValueError as exc:
+        return _mf_error(400, "INVALID_INPUT", str(exc))
+
+
+# ── Persistence: Saved Encounters ─────────────────────────────────────────────
+
+_ENCOUNTER_LOAD = [
+    selectinload(SavedEncounter.encounter_monsters)
+    .selectinload(SavedEncounterMonster.monster_stat_block)
+]
+
+
+@router.post("/encounters", response_model=SavedEncounterOut, status_code=201)
+def save_encounter(body: SaveEncounterIn, db: Session = Depends(get_db)):
+    enc = body.encounter
+
+    # Bulk-load role and creature ORM records by name
+    role_names    = list({m.combat_role_name for m in enc.monsters})
+    creature_names = list({m.creature_archetype_name for m in enc.monsters})
+
+    roles = {
+        r.name: r
+        for r in db.query(CombatRoleArchetype)
+        .filter(CombatRoleArchetype.name.in_(role_names)).all()
+    }
+    creatures = {
+        c.name: c
+        for c in db.query(CreatureArchetype)
+        .filter(CreatureArchetype.name.in_(creature_names)).all()
+    }
+
+    encounter_id = str(uuid.uuid4())
+    saved_enc = SavedEncounter(
+        id=encounter_id,
+        name=body.name,
+        gm_profile_id=body.gm_profile_id,
+        difficulty=enc.difficulty,
+        party_size=enc.party_profile.party_size,
+        party_avg_level=enc.party_profile.avg_level,
+        party_avg_hp=enc.party_profile.avg_hp,
+        party_total_hp=enc.party_profile.total_hp,
+        party_lowest_hp=enc.party_profile.lowest_hp,
+        party_avg_ac=enc.party_profile.avg_ac,
+        party_nova_damage=enc.party_profile.party_nova,
+        party_sustained_damage=enc.party_profile.party_sustained,
+        expected_rounds=enc.expected_rounds,
+        expected_rounds_min=enc.expected_rounds_min,
+        expected_rounds_max=enc.expected_rounds_max,
+    )
+    db.add(saved_enc)
+
+    for sort_idx, monster in enumerate(enc.monsters):
+        role = roles.get(monster.combat_role_name)
+        if not role:
+            db.rollback()
+            return _mf_error(400, "ROLE_NOT_FOUND",
+                             f"Combat role {monster.combat_role_name!r} not found in database")
+
+        creature = creatures.get(monster.creature_archetype_name)
+        stat_block = _build_stat_block(
+            name=monster.creature_archetype_name,
+            monster=monster,
+            party_avg_level=enc.party_profile.avg_level,
+            combat_role_id=role.id,
+            creature_archetype_id=creature.id if creature else None,
+            creature_orm=creature,
+            gm_profile_id=body.gm_profile_id,
+            is_template=False,
+        )
+        db.add(stat_block)
+        db.flush()
+
+        db.add(SavedEncounterMonster(
+            id=str(uuid.uuid4()),
+            saved_encounter_id=encounter_id,
+            monster_stat_block_id=stat_block.id,
+            count=monster.count,
+            sort_order=sort_idx,
+        ))
+
+    db.commit()
+    return (
+        db.query(SavedEncounter)
+        .options(*_ENCOUNTER_LOAD)
+        .filter(SavedEncounter.id == encounter_id)
+        .first()
+    )
+
+
+@router.get("/encounters", response_model=PagedEncountersOut)
+def list_encounters(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+) -> PagedEncountersOut:
+    offset = (page - 1) * per_page
+    total  = db.query(SavedEncounter).count()
+    rows   = (
+        db.query(SavedEncounter)
+        .options(*_ENCOUNTER_LOAD)
+        .order_by(SavedEncounter.created_at.desc())
+        .offset(offset).limit(per_page)
+        .all()
+    )
+    items = [
+        SavedEncounterSummaryOut(
+            id=r.id,
+            name=r.name,
+            difficulty=r.difficulty,
+            party_size=r.party_size,
+            party_avg_level=r.party_avg_level,
+            expected_rounds=r.expected_rounds,
+            total_monster_count=sum(m.count for m in r.encounter_monsters),
+            created_at=r.created_at,
+        )
+        for r in rows
+    ]
+    return PagedEncountersOut(items=items, total=total, page=page, per_page=per_page)
+
+
+@router.get("/encounters/{encounter_id}", response_model=SavedEncounterOut)
+def get_encounter(encounter_id: str, db: Session = Depends(get_db)):
+    encounter = (
+        db.query(SavedEncounter)
+        .options(*_ENCOUNTER_LOAD)
+        .filter(SavedEncounter.id == encounter_id)
+        .first()
+    )
+    if not encounter:
+        return _mf_error(404, "ENCOUNTER_NOT_FOUND", f"Encounter {encounter_id!r} not found")
+    return encounter
+
+
+@router.delete("/encounters/{encounter_id}", status_code=204)
+def delete_encounter(encounter_id: str, db: Session = Depends(get_db)) -> Response:
+    encounter = (
+        db.query(SavedEncounter)
+        .options(*_ENCOUNTER_LOAD)
+        .filter(SavedEncounter.id == encounter_id)
+        .first()
+    )
+    if not encounter:
+        return _mf_error(404, "ENCOUNTER_NOT_FOUND", f"Encounter {encounter_id!r} not found")
+
+    # Collect non-template stat block IDs before the cascade wipes the join rows
+    non_template_ids = [
+        m.monster_stat_block_id
+        for m in encounter.encounter_monsters
+        if not m.monster_stat_block.is_saved_template
+    ]
+
+    db.delete(encounter)   # cascades to SavedEncounterMonster rows
+    db.flush()
+
+    if non_template_ids:
+        db.query(MonsterStatBlock).filter(
+            MonsterStatBlock.id.in_(non_template_ids)
+        ).delete(synchronize_session=False)
+
+    db.commit()
+    return Response(status_code=204)
+
+
+# ── Persistence: Monster Templates ────────────────────────────────────────────
+
+@router.post("/monsters/templates", response_model=MonsterStatBlockOut, status_code=201)
+def save_monster_template(body: SaveMonsterTemplateIn, db: Session = Depends(get_db)):
+    monster  = body.monster
+    role     = db.query(CombatRoleArchetype).filter(CombatRoleArchetype.name == monster.combat_role_name).first()
+    creature = db.query(CreatureArchetype).filter(CreatureArchetype.name == monster.creature_archetype_name).first()
+
+    if not role:
+        return _mf_error(400, "ROLE_NOT_FOUND",
+                         f"Combat role {monster.combat_role_name!r} not found in database")
+
+    stat_block = _build_stat_block(
+        name=body.name,
+        monster=monster,
+        party_avg_level=body.party_avg_level,
+        combat_role_id=role.id,
+        creature_archetype_id=creature.id if creature else None,
+        creature_orm=creature,
+        gm_profile_id=None,
+        is_template=True,
+    )
+    db.add(stat_block)
+    db.commit()
+    db.refresh(stat_block)
+    return stat_block
+
+
+@router.get("/monsters/templates", response_model=PagedTemplatesOut)
+def list_monster_templates(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+) -> PagedTemplatesOut:
+    offset = (page - 1) * per_page
+    q      = db.query(MonsterStatBlock).filter(MonsterStatBlock.is_saved_template == True)  # noqa: E712
+    total  = q.count()
+    rows   = q.order_by(MonsterStatBlock.created_at.desc()).offset(offset).limit(per_page).all()
+    return PagedTemplatesOut(
+        items=[MonsterStatBlockOut.model_validate(r) for r in rows],
+        total=total,
+        page=page,
+        per_page=per_page,
+    )
+
+
+@router.get("/monsters/templates/{template_id}", response_model=MonsterStatBlockOut)
+def get_monster_template(template_id: str, db: Session = Depends(get_db)):
+    template = db.query(MonsterStatBlock).filter(MonsterStatBlock.id == template_id).first()
+    if not template:
+        return _mf_error(404, "TEMPLATE_NOT_FOUND", f"Template {template_id!r} not found")
+    return template
+
+
+@router.delete("/monsters/templates/{template_id}", status_code=204)
+def delete_monster_template(template_id: str, db: Session = Depends(get_db)) -> Response:
+    template = db.query(MonsterStatBlock).filter(MonsterStatBlock.id == template_id).first()
+    if not template:
+        return _mf_error(404, "TEMPLATE_NOT_FOUND", f"Template {template_id!r} not found")
+    if not template.is_saved_template:
+        return _mf_error(400, "NOT_A_TEMPLATE",
+                         f"Stat block {template_id!r} is not a saved template and cannot be deleted here.")
+
+    db.delete(template)
+    db.commit()
+    return Response(status_code=204)
+
+
+# ── Private helpers ───────────────────────────────────────────────────────────
+
+def _mf_error(status: int, code: str, detail: str, warnings: list[str] | None = None) -> JSONResponse:
+    return JSONResponse(
+        status_code=status,
+        content={"error": code, "detail": detail, "warnings": warnings or []},
+    )
+
+
+def _level_tier(avg_level: int) -> int:
+    if avg_level <= 4:  return 1
+    if avg_level <= 10: return 2
+    if avg_level <= 16: return 3
+    return 4
+
+
+@router.post("/export/dndbeyond", response_model=DnDBeyondExport)
+def export_dndbeyond(body: ExportDnDBeyondIn) -> DnDBeyondExport:
+    """Format a GeneratedMonster for pasting into D&D Beyond's homebrew creator.
+
+    Pure computation — no database access.
+    """
+    return generate_dndbeyond_export(body.monster)
+
+
+def _build_stat_block(
+    name: str,
+    monster: GeneratedMonster,
+    party_avg_level: int,
+    combat_role_id: str,
+    creature_archetype_id: str | None,
+    creature_orm: CreatureArchetype | None,
+    gm_profile_id: str | None,
+    is_template: bool,
+) -> MonsterStatBlock:
+    return MonsterStatBlock(
+        id=str(uuid.uuid4()),
+        name=name,
+        creature_archetype_id=creature_archetype_id,
+        combat_role_archetype_id=combat_role_id,
+        gm_profile_id=gm_profile_id,
+        is_boss=monster.is_boss,
+        level_tier=_level_tier(party_avg_level),
+        hp=monster.stats.hp,
+        ac=monster.stats.ac,
+        attack_bonus=monster.stats.attack_bonus,
+        save_dc=monster.stats.save_dc,
+        speed=monster.stats.speed,
+        str_score=monster.stats.str_score,
+        dex_score=monster.stats.dex_score,
+        con_score=monster.stats.con_score,
+        int_score=monster.stats.int_score,
+        wis_score=monster.stats.wis_score,
+        cha_score=monster.stats.cha_score,
+        damage_immunities=creature_orm.damage_immunities if creature_orm else None,
+        damage_resistances=creature_orm.damage_resistances if creature_orm else None,
+        condition_immunities=creature_orm.condition_immunities if creature_orm else None,
+        has_legendary_actions=len(monster.abilities.legendary_actions) > 0,
+        legendary_action_count=monster.stats.legendary_action_count,
+        has_lair_actions=len(monster.abilities.lair_actions) > 0,
+        actions=[a.model_dump() for a in monster.abilities.standard_actions],
+        legendary_actions=[a.model_dump() for a in monster.abilities.legendary_actions],
+        lair_actions=[a.model_dump() for a in monster.abilities.lair_actions],
+        is_saved_template=is_template,
+    )

@@ -1,0 +1,166 @@
+.mf-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+/* ── Header ── */
+.mf-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.mf-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  margin: 0;
+  flex: 1 1 auto;
+}
+
+.mf-profile-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+.mf-profile-label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.mf-profile-select {
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.3rem 0.6rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  min-width: 160px;
+}
+
+.mf-profile-select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.mf-manage-link {
+  font-size: 0.8rem;
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.mf-manage-link:hover {
+  text-decoration: underline;
+}
+
+/* ── Tabs ── */
+.mf-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 1.5rem;
+}
+
+.mf-tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  padding: 0.55rem 1.2rem;
+  font-size: 0.9rem;
+  font-family: var(--sans);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.mf-tab-btn:hover {
+  color: var(--text);
+}
+
+.mf-tab-btn--active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Tab content ── */
+.mf-tab-content {
+  min-height: 200px;
+}
+
+.mf-placeholder {
+  padding: 3rem 1rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* ── Modal overlay ── */
+.mf-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.mf-modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  width: min(480px, 92vw);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.mf-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.mf-modal-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-heading);
+}
+
+.mf-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 1;
+  padding: 0.2rem 0.4rem;
+}
+
+.mf-modal-close:hover {
+  color: var(--text);
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .mf-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .mf-profile-controls {
+    flex-wrap: wrap;
+  }
+}

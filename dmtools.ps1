@@ -107,7 +107,6 @@ function Stop-Services {
 function Invoke-VttRelease {
     param([switch]$Minor, [switch]$Major)
 
-    # ── Guards ────────────────────────────────────────────────────────────────
     $branch = git -C $RootDir rev-parse --abbrev-ref HEAD 2>&1
     if ($LASTEXITCODE -ne 0 -or $branch -ne 'main') {
         Write-Step "Must be on main branch (currently '$branch')." "Red"; return
@@ -120,18 +119,20 @@ function Invoke-VttRelease {
 
     Write-Step "Pulling latest main..." "Yellow"
     git -C $RootDir pull --ff-only origin main
-    if ($LASTEXITCODE -ne 0) { Write-Step "Pull failed — resolve conflicts first." "Red"; return }
+    if ($LASTEXITCODE -ne 0) { Write-Step "Pull failed." "Red"; return }
 
-    # ── Read current version ──────────────────────────────────────────────────
     $tauriConf = Join-Path $RootDir "vtt\src-tauri\tauri.conf.json"
-    $rawConf   = Get-Content $tauriConf -Raw
-    if ($rawConf -notmatch '"version":\s*"([0-9]+)\.([0-9]+)\.([0-9]+)"') {
+    $confText  = Get-Content $tauriConf -Raw
+    $verMatch  = [regex]::Match($confText, '"version":\s*"(\d+)\.(\d+)\.(\d+)"')
+    if (-not $verMatch.Success) {
         Write-Step "Could not parse version from tauri.conf.json" "Red"; return
     }
-    [int]$vMaj = $Matches[1]; [int]$vMin = $Matches[2]; [int]$vPat = $Matches[3]
-    $oldVer    = "$vMaj.$vMin.$vPat"
 
-    # ── Bump ──────────────────────────────────────────────────────────────────
+    [int]$vMaj = $verMatch.Groups[1].Value
+    [int]$vMin = $verMatch.Groups[2].Value
+    [int]$vPat = $verMatch.Groups[3].Value
+    $oldVer = "$vMaj.$vMin.$vPat"
+
     if     ($Major) { $vMaj++; $vMin = 0; $vPat = 0 }
     elseif ($Minor) {          $vMin++;   $vPat = 0 }
     else            {                     $vPat++   }
@@ -142,24 +143,27 @@ function Invoke-VttRelease {
     Write-Host "  $oldVer  ->  $newVer" -ForegroundColor Cyan
     Write-Host ""
 
-    # ── Update tauri.conf.json ────────────────────────────────────────────────
     Write-Step "Updating tauri.conf.json..." "Yellow"
-    $updatedConf = $rawConf -replace '"version":\s*"[0-9]+\.[0-9]+\.[0-9]+"', "`"version`": `"$newVer`""
-    [System.IO.File]::WriteAllText($tauriConf, $updatedConf, [System.Text.Encoding]::UTF8)
+    $newConfText = $confText.Replace(
+        '"version": "' + $oldVer + '"',
+        '"version": "' + $newVer + '"'
+    )
+    $utf8 = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllText($tauriConf, $newConfText, $utf8)
 
-    # ── Update Cargo.toml (package version line only) ─────────────────────────
     Write-Step "Updating Cargo.toml..." "Yellow"
-    $cargoPath = Join-Path $RootDir "vtt\src-tauri\Cargo.toml"
-    $updatedCargo = (Get-Content $cargoPath -Raw) `
-        -replace '(?m)^version = "[0-9]+\.[0-9]+\.[0-9]+"', "version = `"$newVer`""
-    [System.IO.File]::WriteAllText($cargoPath, $updatedCargo, [System.Text.Encoding]::UTF8)
+    $cargoPath    = Join-Path $RootDir "vtt\src-tauri\Cargo.toml"
+    $cargoText    = Get-Content $cargoPath -Raw
+    $newCargoText = $cargoText.Replace(
+        'version = "' + $oldVer + '"',
+        'version = "' + $newVer + '"'
+    )
+    [System.IO.File]::WriteAllText($cargoPath, $newCargoText, $utf8)
 
-    # ── Commit ────────────────────────────────────────────────────────────────
     Write-Step "Committing..." "Yellow"
     git -C $RootDir add "vtt/src-tauri/tauri.conf.json" "vtt/src-tauri/Cargo.toml"
     git -C $RootDir commit -m "chore: release $tag"
 
-    # ── Push commit then tag ──────────────────────────────────────────────────
     Write-Step "Pushing main..." "Yellow"
     git -C $RootDir push origin main
     if ($LASTEXITCODE -ne 0) { Write-Step "Push failed." "Red"; return }

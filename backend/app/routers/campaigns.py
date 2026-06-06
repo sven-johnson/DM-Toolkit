@@ -1,11 +1,14 @@
 import uuid
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session as DBSession, selectinload
 
 from ..auth import get_current_user, require_campaign_role, ROLE_HIERARCHY
 from ..database import get_db
-from ..models import Campaign, CampaignMember, Character, Session, Storyline, User
+from ..models import Campaign, CampaignMember, Character, RuleSystem, Session, Storyline, User
+from ..monster_factory.services.character_combat_service import get_campaign_party_summary
 from ..schemas import (
     CampaignCreate,
     CampaignMemberOut,
@@ -18,6 +21,33 @@ from ..schemas import (
     StorylineOut,
     UserOut,
 )
+
+
+class _CharacterProfileBrief(BaseModel):
+    character_id: str
+    character_name: str
+    max_hp: int
+    armor_class: int
+    nova_damage: float
+    sustained_damage_per_round: float
+    proficiency_bonus: int
+    level: int
+
+
+class _PartySummaryOut(BaseModel):
+    campaign_id: str
+    rule_system_slug: str
+    party_size: int
+    avg_level: float
+    avg_hp: float
+    total_hp: int
+    lowest_hp: int
+    avg_ac: float
+    party_nova: float
+    party_sustained: float
+    has_complete_data: bool
+    incomplete_characters: list[str]
+    characters: list[_CharacterProfileBrief]
 
 router = APIRouter()
 
@@ -95,7 +125,7 @@ def get_campaign(
     role = require_campaign_role(campaign_id, user, db)
     campaign = (
         db.query(Campaign)
-        .options(selectinload(Campaign.storylines))
+        .options(selectinload(Campaign.storylines), selectinload(Campaign.rule_system))
         .filter(Campaign.id == campaign_id)
         .first()
     )
@@ -107,6 +137,7 @@ def get_campaign(
         "created_at": campaign.created_at,
         "my_role": role,
         "storylines": campaign.storylines,
+        "rule_system": campaign.rule_system,
     }
 
 
@@ -119,7 +150,13 @@ def update_campaign(
 ) -> dict:
     role = require_campaign_role(campaign_id, user, db, min_role="game_master")
     campaign = _get_campaign_or_404(campaign_id, db)
-    for key, value in body.model_dump(exclude_none=True).items():
+    data = body.model_dump(exclude_none=True)
+    if "rule_system_id" in data:
+        rs_id = data.pop("rule_system_id")
+        if rs_id is not None and not db.query(RuleSystem).filter(RuleSystem.id == rs_id).first():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rule system not found")
+        campaign.rule_system_id = rs_id
+    for key, value in data.items():
         setattr(campaign, key, value)
     db.commit()
     db.refresh(campaign)
@@ -287,3 +324,49 @@ def remove_member(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
     db.delete(member)
     db.commit()
+
+
+# ── Combat: Party Summary ─────────────────────────────────────────────────────
+
+@router.get("/{campaign_id}/combat/party-summary", response_model=_PartySummaryOut)
+def get_party_summary(
+    campaign_id: str,
+    db: DBSession = Depends(get_db),
+) -> _PartySummaryOut:
+    """Return the combat party summary for a campaign.
+
+    Used by Monster Factory to auto-load party data.
+    No authentication required (read-only, used in the DM tool context).
+    """
+    try:
+        summary = get_campaign_party_summary(campaign_id, db)
+    except ValueError as e:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(e))
+
+    return _PartySummaryOut(
+        campaign_id=summary.campaign_id,
+        rule_system_slug=summary.rule_system_slug,
+        party_size=summary.party_size,
+        avg_level=summary.avg_level,
+        avg_hp=summary.avg_hp,
+        total_hp=summary.total_hp,
+        lowest_hp=summary.lowest_hp,
+        avg_ac=summary.avg_ac,
+        party_nova=summary.party_nova,
+        party_sustained=summary.party_sustained,
+        has_complete_data=summary.has_complete_data,
+        incomplete_characters=summary.incomplete_characters,
+        characters=[
+            _CharacterProfileBrief(
+                character_id=p.character_id,
+                character_name=p.character_name,
+                max_hp=p.max_hp,
+                armor_class=p.armor_class,
+                nova_damage=p.nova_damage,
+                sustained_damage_per_round=p.sustained_damage_per_round,
+                proficiency_bonus=p.proficiency_bonus,
+                level=p.level,
+            )
+            for p in summary.characters
+        ],
+    )

@@ -71,6 +71,12 @@ export class StageManager {
     this.grid.redraw(width, height, config)
   }
 
+  /** Update the stored grid config without triggering a redraw.
+   *  Call this before applyFullscreenScale when grid settings change. */
+  updateGridConfig(config: GridConfig): void {
+    this.lastGridConfig = config
+  }
+
   /**
    * Scale the entire stage to fill the screen while preserving the TV aspect ratio.
    * The background and grid are redrawn to match tvW × tvH in stage coordinates so

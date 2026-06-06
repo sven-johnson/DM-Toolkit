@@ -137,6 +137,10 @@ export function PlayerView() {
             useVttStore.getState().setGridConfig(event.payload)
             const sm = stageManager.current
             if (!sm) return
+            // Read the fully-merged GridConfig from the store (setGridConfig already
+            // merged the payload), then update lastGridConfig so applyFullscreenScale
+            // redraws with the new color, lineWidth, opacity, and origin.
+            sm.updateGridConfig(useVttStore.getState().grid)
             const { width: tvW, height: tvH } = useVttStore.getState().tvDimensions
             const { scale, offsetX, offsetY } = computeFullscreenScale(tvW, tvH)
             sm.applyFullscreenScale(scale, offsetX, offsetY, tvW, tvH)

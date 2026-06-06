@@ -132,7 +132,11 @@ export function useDeleteScene(queryKey: unknown[]) {
 // Enemies
 export function useAddEnemy(queryKey: unknown[]) {
   const queryClient = useQueryClient()
-  return useMutation<SceneEnemy, Error, { sceneId: string; name: string; quantity: number }>({
+  return useMutation<
+    SceneEnemy,
+    Error,
+    { sceneId: string; name: string; quantity: number; saved_encounter_monster_id?: string | null }
+  >({
     mutationFn: async ({ sceneId, ...body }) => {
       const { data } = await apiClient.post<SceneEnemy>(`/scenes/${sceneId}/enemies`, body)
       return data

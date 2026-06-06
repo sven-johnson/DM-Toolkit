@@ -6,7 +6,17 @@ from sqlalchemy.orm import Session as DBSession, selectinload
 
 from ..auth import verify_token
 from ..database import get_db
-from ..models import Check, Roll, Scene, SceneEnemy, SceneShopItem
+from ..models import (
+    Check,
+    CombatRoleArchetype,
+    MonsterStatBlock,
+    Roll,
+    SavedEncounterMonster,
+    Scene,
+    SceneEnemy,
+    SceneShopItem,
+)
+from ..monster_factory_schemas import MonsterStatBlockOut
 from ..schemas import (
     SceneEnemyCreate,
     SceneEnemyOut,
@@ -16,6 +26,14 @@ from ..schemas import (
     SceneShopItemOut,
     SceneShopItemUpdate,
     SceneUpdate,
+)
+
+# Eager-load chain for enemies with stat block data
+_ENEMY_LOAD = (
+    selectinload(Scene.enemies)
+    .selectinload(SceneEnemy.saved_encounter_monster)
+    .selectinload(SavedEncounterMonster.monster_stat_block)
+    .selectinload(MonsterStatBlock.combat_role)
 )
 
 router = APIRouter()
@@ -58,7 +76,7 @@ def update_scene(
         db.query(Scene)
         .options(
             selectinload(Scene.checks).selectinload(Check.rolls),
-            selectinload(Scene.enemies),
+            _ENEMY_LOAD,
             selectinload(Scene.shop_items),
         )
         .filter(Scene.id == scene_id)
@@ -131,11 +149,68 @@ def update_enemy(
     )
     if not enemy:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Enemy not found")
-    for key, value in body.model_dump(exclude_none=True).items():
+
+    data = body.model_dump(exclude_none=True)
+
+    # Validate saved_encounter_monster_id FK if being set
+    if "saved_encounter_monster_id" in data:
+        sem_id = data["saved_encounter_monster_id"]
+        if sem_id is not None:
+            exists = db.query(SavedEncounterMonster).filter(
+                SavedEncounterMonster.id == sem_id
+            ).first()
+            if not exists:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"SavedEncounterMonster {sem_id!r} not found",
+                )
+        enemy.saved_encounter_monster_id = sem_id
+        data.pop("saved_encounter_monster_id")
+
+    for key, value in data.items():
         setattr(enemy, key, value)
+
     db.commit()
-    db.refresh(enemy)
+
+    # Reload with stat block relationships for response
+    enemy = (
+        db.query(SceneEnemy)
+        .options(
+            selectinload(SceneEnemy.saved_encounter_monster)
+            .selectinload(SavedEncounterMonster.monster_stat_block)
+            .selectinload(MonsterStatBlock.combat_role)
+        )
+        .filter(SceneEnemy.id == enemy_id)
+        .first()
+    )
     return enemy
+
+
+@router.get("/{scene_id}/enemies/{enemy_id}/stat-block", response_model=MonsterStatBlockOut)
+def get_enemy_stat_block(
+    scene_id: str,
+    enemy_id: str,
+    db: DBSession = Depends(get_db),
+    _: str = Depends(verify_token),
+) -> MonsterStatBlock:
+    enemy = (
+        db.query(SceneEnemy)
+        .options(
+            selectinload(SceneEnemy.saved_encounter_monster)
+            .selectinload(SavedEncounterMonster.monster_stat_block)
+            .selectinload(MonsterStatBlock.combat_role)
+        )
+        .filter(SceneEnemy.id == enemy_id, SceneEnemy.scene_id == scene_id)
+        .first()
+    )
+    if not enemy:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Enemy not found")
+    if not enemy.saved_encounter_monster or not enemy.saved_encounter_monster.monster_stat_block:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No stat block linked to this enemy",
+        )
+    return enemy.saved_encounter_monster.monster_stat_block
 
 
 @router.delete("/{scene_id}/enemies/{enemy_id}", status_code=status.HTTP_204_NO_CONTENT)

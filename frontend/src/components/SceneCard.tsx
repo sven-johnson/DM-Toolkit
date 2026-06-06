@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
 import { CSS } from '@dnd-kit/utilities'
 import { useSortable } from '@dnd-kit/sortable'
-import type { Character, Check, Currency, Scene } from '../types'
+import type { Character, Check, Currency, Scene, SceneEnemy } from '../types'
+import type { AssignedAbility, GeneratedMonster, MonsterStatBlock } from '../types/monsterFactory'
 import { SceneEditor } from './SceneEditor'
 import { CheckWidget } from './CheckWidget'
 import { DmNotesEditor } from './DmNotesEditor'
@@ -13,6 +14,13 @@ import {
   useUpdateShopItem,
   useDeleteShopItem,
 } from '../hooks/useStorylines'
+import { useEnemyStatBlock } from '../hooks/useSceneCombat'
+import { useExportDnDBeyond } from '../hooks/useMonsterFactory'
+import { SceneMonsterFactoryModal } from './MonsterFactory/SceneMonsterFactoryModal'
+import { AttachEncounterModal } from './MonsterFactory/AttachEncounterModal'
+import { MonsterStatBlockCard } from './MonsterFactory/MonsterStatBlockCard'
+import { DnDBeyondExportModal } from './MonsterFactory/DnDBeyondExportModal'
+import type { DnDBeyondExport } from '../types/monsterFactory'
 
 interface SlashItem {
   type: 'skill' | 'save'
@@ -72,8 +80,12 @@ export function SceneCard({
   const [titleDraft, setTitleDraft] = useState(scene.title)
   const [musicCue, setMusicCue] = useState(scene.music_cue ?? '')
   const [editingCue, setEditingCue] = useState(false)
-  const [newEnemyName, setNewEnemyName] = useState('')
-  const [newEnemyQty, setNewEnemyQty] = useState('1')
+  const [newEnemyName, setNewEnemyName]       = useState('')
+  const [newEnemyQty, setNewEnemyQty]         = useState('1')
+  const [factoryModalOpen, setFactoryModalOpen] = useState(false)
+  const [attachModalOpen, setAttachModalOpen]   = useState(false)
+  const [statBlockEnemyId, setStatBlockEnemyId] = useState<string | null>(null)
+  const [sbExportData, setSbExportData]         = useState<DnDBeyondExport | null>(null)
   const [newItemName, setNewItemName] = useState('')
   const [newItemDesc, setNewItemDesc] = useState('')
   const [newItemPrice, setNewItemPrice] = useState('0')
@@ -84,6 +96,34 @@ export function SceneCard({
   const addEnemy = useAddEnemy(queryKey)
   const updateEnemy = useUpdateEnemy(queryKey)
   const deleteEnemy = useDeleteEnemy(queryKey)
+  const { data: statBlock }   = useEnemyStatBlock(scene.id, statBlockEnemyId)
+  const exportMutation        = useExportDnDBeyond()
+
+  function statBlockToMonster(sb: MonsterStatBlock, roleName: string, count: number): GeneratedMonster {
+    return {
+      slot_index: 0,
+      combat_role_name: roleName,
+      creature_archetype_name: sb.name,
+      count,
+      is_boss: sb.is_boss,
+      stats: {
+        hp: sb.hp, ac: sb.ac, attack_bonus: sb.attack_bonus, save_dc: sb.save_dc,
+        damage_per_attack: 0, attack_count: sb.actions?.length ?? 1,
+        damage_dice: '—', damage_bonus: 0, speed: sb.speed,
+        str_score: sb.str_score, dex_score: sb.dex_score, con_score: sb.con_score,
+        int_score: sb.int_score, wis_score: sb.wis_score, cha_score: sb.cha_score,
+        legendary_action_count: sb.legendary_action_count,
+        warnings: [], show_math_detail: {},
+      },
+      abilities: {
+        standard_actions:  (sb.actions           ?? []) as unknown as AssignedAbility[],
+        legendary_actions: (sb.legendary_actions ?? []) as unknown as AssignedAbility[],
+        lair_actions:      (sb.lair_actions      ?? []) as unknown as AssignedAbility[],
+        special_traits: [],
+        multiattack_description: '',
+      },
+    }
+  }
   const addShopItem = useAddShopItem(queryKey)
   const updateShopItem = useUpdateShopItem(queryKey)
   const deleteShopItem = useDeleteShopItem(queryKey)
@@ -395,7 +435,17 @@ export function SceneCard({
                             }}
                           />
                         </td>
-                        <td>
+                        <td style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                          {enemy.saved_encounter_monster_id && (
+                            <button
+                              className="sb-btn"
+                              type="button"
+                              onClick={() => setStatBlockEnemyId(enemy.id)}
+                              title="View stat block"
+                            >
+                              Stat Block
+                            </button>
+                          )}
                           <button
                             className="btn-icon btn-danger"
                             type="button"
@@ -435,6 +485,24 @@ export function SceneCard({
                   + Add
                 </button>
               </form>
+              <div className="scene-mf-btns">
+                {campaignId && (
+                  <button
+                    type="button"
+                    className="scene-mf-btn"
+                    onClick={() => setFactoryModalOpen(true)}
+                  >
+                    + Monster Factory
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="scene-mf-btn"
+                  onClick={() => setAttachModalOpen(true)}
+                >
+                  Attach Saved Encounter
+                </button>
+              </div>
             </div>
           )}
 
@@ -599,6 +667,71 @@ export function SceneCard({
             </div>
           )}
         </div>
+      )}
+
+      {/* Monster Factory modal */}
+      {factoryModalOpen && campaignId && (
+        <SceneMonsterFactoryModal
+          sceneId={scene.id}
+          campaignId={campaignId}
+          queryKey={queryKey}
+          onClose={() => setFactoryModalOpen(false)}
+        />
+      )}
+
+      {/* Attach saved encounter modal */}
+      {attachModalOpen && (
+        <AttachEncounterModal
+          sceneId={scene.id}
+          queryKey={queryKey}
+          onClose={() => setAttachModalOpen(false)}
+        />
+      )}
+
+      {/* Stat block viewer modal */}
+      {statBlockEnemyId && statBlock && (() => {
+        const enemy = scene.enemies.find((e) => e.id === statBlockEnemyId)
+        const roleName = enemy?.stat_block_summary?.combat_role_name ?? '—'
+        const count    = enemy?.quantity ?? 1
+        const monster  = statBlockToMonster(statBlock, roleName, count)
+        return (
+          <div className="sbm-overlay" onClick={() => { setStatBlockEnemyId(null); setSbExportData(null) }}>
+            <div className="sbm-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="sbm-header">
+                <h2 className="sbm-title">{statBlock.name}</h2>
+                <button
+                  type="button"
+                  className="sbm-close"
+                  onClick={() => { setStatBlockEnemyId(null); setSbExportData(null) }}
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="sbm-body">
+                <MonsterStatBlockCard monster={monster} showMathDetail={false} />
+              </div>
+              <div className="sbm-footer">
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  disabled={exportMutation.isPending}
+                  onClick={() => void exportMutation.mutateAsync(monster).then(setSbExportData)}
+                >
+                  {exportMutation.isPending ? 'Loading…' : 'Export to D&D Beyond'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* D&D Beyond export modal (opened from stat block viewer) */}
+      {sbExportData && (
+        <DnDBeyondExportModal
+          exportData={sbExportData}
+          onClose={() => setSbExportData(null)}
+        />
       )}
     </div>
   )

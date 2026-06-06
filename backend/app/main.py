@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .auth import router as auth_router, seed_initial_user
+from .seed_rule_systems import seed_rule_systems
 from .routers import scenes
 from .routers.campaigns import router as campaigns_router
 from .routers.names import router as names_router
@@ -17,10 +18,13 @@ from .routers.wiki import router as wiki_router
 from .routers.images import router as images_router
 from .routers.admin import router as admin_router
 from .routers.monster_factory import router as monster_factory_router
+from .routers.rule_systems import router as rule_systems_router
+from .routers.combat import router as combat_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     seed_initial_user()
+    seed_rule_systems()
     yield
 
 
@@ -70,3 +74,5 @@ app.include_router(images_router, prefix="/images", tags=["images"])
 app.include_router(names_router, prefix="/names", tags=["names"])
 app.include_router(admin_router, prefix="/admin", tags=["admin"])
 app.include_router(monster_factory_router, prefix="/monster-factory", tags=["monster-factory"])
+app.include_router(rule_systems_router, prefix="/api/v1/rule-systems", tags=["rule-systems"])
+app.include_router(combat_router, prefix="/characters/{character_id}/combat", tags=["combat"])

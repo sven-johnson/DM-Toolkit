@@ -9,6 +9,7 @@ import {
   useImportCharacterPdf,
   useUpdateCharacter,
 } from '../hooks/useCharacters'
+import { CombatStatsEditor } from '../components/Characters/CombatStatsEditor'
 
 export function CharactersPage() {
   const campaignId = useCampaignId()
@@ -18,7 +19,8 @@ export function CharactersPage() {
   const deleteCharacter = useDeleteCharacter(campaignId!)
   const importPdf = useImportCharacterPdf(campaignId!)
 
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const [expandedIds, setExpandedIds]   = useState<Set<string>>(new Set())
+  const [combatTabIds, setCombatTabIds] = useState<Set<string>>(new Set())
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [showImport, setShowImport] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
@@ -164,8 +166,16 @@ export function CharactersPage() {
           <CharacterManagerCard
             key={character.id}
             character={character}
+            campaignId={campaignId!}
             expanded={expandedIds.has(character.id)}
+            combatTabActive={combatTabIds.has(character.id)}
             onToggleExpand={() => toggleExpand(character.id)}
+            onToggleCombatTab={() => setCombatTabIds((prev) => {
+              const next = new Set(prev)
+              if (next.has(character.id)) next.delete(character.id)
+              else next.add(character.id)
+              return next
+            })}
             onUpdate={(patch) => handleUpdate(character.id, patch)}
             onDelete={() => {
               if (deleteConfirmId === character.id) {
@@ -185,8 +195,11 @@ export function CharactersPage() {
 
 interface CardProps {
   character: Character
+  campaignId: string
   expanded: boolean
+  combatTabActive: boolean
   onToggleExpand: () => void
+  onToggleCombatTab: () => void
   onUpdate: (patch: Partial<Character>) => void
   onDelete: () => void
   deleteConfirm: boolean
@@ -195,8 +208,11 @@ interface CardProps {
 
 function CharacterManagerCard({
   character,
+  campaignId,
   expanded,
+  combatTabActive,
   onToggleExpand,
+  onToggleCombatTab,
   onUpdate,
   onDelete,
   deleteConfirm,
@@ -262,7 +278,45 @@ function CharacterManagerCard({
 
       {expanded && (
         <div className="character-manager-card-body">
-          <div className="char-body-cols">
+          {/* Tab bar */}
+          <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid var(--border)', marginBottom: '0.75rem' }}>
+            <button
+              type="button"
+              style={{
+                background: 'none', border: 'none', borderBottom: combatTabActive ? 'none' : '2px solid var(--accent)',
+                marginBottom: '-2px', padding: '0.35rem 0.85rem', fontSize: '0.82rem',
+                fontFamily: 'var(--sans)', cursor: 'pointer',
+                color: !combatTabActive ? 'var(--accent)' : 'var(--text-muted)',
+                fontWeight: !combatTabActive ? '600' : '400',
+              }}
+              onClick={() => { if (combatTabActive) onToggleCombatTab() }}
+            >
+              Details
+            </button>
+            <button
+              type="button"
+              style={{
+                background: 'none', border: 'none', borderBottom: combatTabActive ? '2px solid var(--accent)' : 'none',
+                marginBottom: '-2px', padding: '0.35rem 0.85rem', fontSize: '0.82rem',
+                fontFamily: 'var(--sans)', cursor: 'pointer',
+                color: combatTabActive ? 'var(--accent)' : 'var(--text-muted)',
+                fontWeight: combatTabActive ? '600' : '400',
+              }}
+              onClick={() => { if (!combatTabActive) onToggleCombatTab() }}
+            >
+              Combat Stats
+            </button>
+          </div>
+
+          {combatTabActive && (
+            <CombatStatsEditor
+              characterId={character.id}
+              characterLevel={character.level}
+              campaignId={campaignId}
+            />
+          )}
+
+          {!combatTabActive && <div className="char-body-cols">
             {/* Column 1: Combat → Abilities → Saving Throws */}
             <div className="char-body-col">
               <div className="char-section">
@@ -352,6 +406,7 @@ function CharacterManagerCard({
               </div>
             </div>
           </div>
+          }
         </div>
       )}
     </div>
