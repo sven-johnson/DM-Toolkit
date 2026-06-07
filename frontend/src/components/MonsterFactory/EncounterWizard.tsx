@@ -262,8 +262,8 @@ export function EncounterWizard({ gmProfileId, onSwitchToSaved, campaignId, save
 
           <GeneratedEncounterView
             encounter={generatedEncounter}
-            onSave={(name, enc) => void (onSaveOverride ?? handleSave)(name, enc)}
-            onSaveMonsterTemplate={(monster, name) => void handleSaveMonsterTemplate(monster, name)}
+            onSave={(name, enc) => (onSaveOverride ?? handleSave)(name, enc)}
+            onSaveMonsterTemplate={(monster, name) => handleSaveMonsterTemplate(monster, name)}
             onRebalance={handleRebalance}
             onNewEncounter={handleNewEncounter}
             isSaving={isSaving}

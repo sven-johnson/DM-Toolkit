@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import {
   useCreateProfile,
@@ -254,7 +254,7 @@ export function GMProfileModal({ isOpen, onClose, onProfileChange }: Props) {
   // ── Field helpers (closured over register/watch/setValue) ──────────────────
 
   function isDefault(key: string): boolean {
-    const val = (allValues as Record<string, unknown>)[key]
+    const val = (allValues as unknown as Record<string, unknown>)[key]
     return val === BALANCED[key]
   }
 
@@ -266,7 +266,7 @@ export function GMProfileModal({ isOpen, onClose, onProfileChange }: Props) {
   function SliderField({ k, label, tip, min, max, step }: {
     k: keyof ProfileFormValues; label: string; tip: string; min: number; max: number; step: number
   }) {
-    const val = (allValues as Record<string, unknown>)[k as string] as number
+    const val = (allValues as unknown as Record<string, unknown>)[k as string] as number
     const atDefault = isDefault(k as string)
     return (
       <div className="gpm-field-row">
@@ -315,7 +315,7 @@ export function GMProfileModal({ isOpen, onClose, onProfileChange }: Props) {
     k: keyof ProfileFormValues; label: string; tip: string; min: number; max: number; nullable?: boolean
   }) {
     const atDefault = isDefault(k as string)
-    const currentVal = (allValues as Record<string, unknown>)[k as string]
+    const currentVal = (allValues as unknown as Record<string, unknown>)[k as string]
     return (
       <div className="gpm-field-row">
         <span className="gpm-field-label">

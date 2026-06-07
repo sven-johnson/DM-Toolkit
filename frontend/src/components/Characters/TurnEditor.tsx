@@ -344,7 +344,7 @@ function SortableTurnCard(props: Omit<TurnCardProps, 'dragHandleListeners' | 'dr
       <TurnCard
         {...props}
         dragHandleListeners={listeners as Record<string, unknown>}
-        dragHandleAttributes={attributes as Record<string, unknown>}
+        dragHandleAttributes={attributes as unknown as Record<string, unknown>}
       />
     </div>
   )

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { CSS } from '@dnd-kit/utilities'
 import { useSortable } from '@dnd-kit/sortable'
-import type { Character, Check, Currency, Scene, SceneEnemy } from '../types'
+import type { Character, Check, Currency, Scene } from '../types'
 import type { AssignedAbility, GeneratedMonster, MonsterStatBlock } from '../types/monsterFactory'
 import { SceneEditor } from './SceneEditor'
 import { CheckWidget } from './CheckWidget'

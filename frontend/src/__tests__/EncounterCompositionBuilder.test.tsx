@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { vi } from 'vitest'
@@ -20,7 +20,7 @@ const STANDARD_PROFILE: PartyProfile = {
   proficiency_bonus: 3, estimated_bonus_actions_per_round: 2.0, avg_attack_bonus: 5,
 }
 
-function renderBuilder(onChange = vi.fn<[EncounterComposition], void>()) {
+function renderBuilder(onChange = vi.fn<(composition: EncounterComposition) => void>()) {
   const qc = makeQC()
   render(
     <QueryClientProvider client={qc}>

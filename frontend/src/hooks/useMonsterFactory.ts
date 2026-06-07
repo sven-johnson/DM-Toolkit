@@ -18,7 +18,6 @@ import type {
   Preset,
   RebalanceEncounterInput,
   SavedEncounter,
-  SavedEncounterSummary,
   SaveEncounterInput,
   SaveMonsterTemplateInput,
 } from '../types/monsterFactory'
@@ -91,13 +90,13 @@ export function useGMProfiles() {
 }
 
 export function useDefaultGMProfile() {
-  return useQuery<GMProfile | undefined>({
+  return useQuery<GMProfile[], Error, GMProfile | undefined>({
     queryKey: ['monster-factory', 'profiles'],
     queryFn: async () => {
       const { data } = await apiClient.get<GMProfile[]>(`${BASE}/profiles`)
       return data
     },
-    select: (profiles: GMProfile[]) => profiles.find((p) => p.is_default),
+    select: (profiles) => profiles.find((p) => p.is_default),
   })
 }
 
