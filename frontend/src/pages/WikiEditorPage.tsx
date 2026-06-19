@@ -75,21 +75,30 @@ function LocationHierarchyEditor({
     )
   }
 
-  function handleAddParent(parentSubtype: LocationSubtype, parentLevel: typeof LOCATION_HIERARCHY[number]) {
+  function handleAddParent(parentSubtype: LocationSubtype) {
     const value = parentInputs[parentSubtype]?.trim()
     if (!value) return
     const myChildLabel = LOCATION_HIERARCHY[myLevel].childLabel
     addAsTarget.mutate(
-      { source_title: value, source_category: 'location', association_label: myChildLabel },
+      {
+        source_title: value,
+        source_category: 'location',
+        source_location_subtype: parentSubtype,
+        association_label: myChildLabel,
+      },
       { onSuccess: () => setParentInputs((prev) => ({ ...prev, [parentSubtype]: '' })) },
     )
-    void parentLevel // suppress lint
   }
 
   function handleAddChild() {
     if (!childLevel || !childInput.trim()) return
     addChild.mutate(
-      { target_title: childInput.trim(), target_category: 'location', association_label: childLevel.childLabel },
+      {
+        target_title: childInput.trim(),
+        target_category: 'location',
+        target_location_subtype: childLevel.subtype,
+        association_label: childLevel.childLabel,
+      },
       { onSuccess: () => setChildInput('') },
     )
   }
@@ -159,7 +168,7 @@ function LocationHierarchyEditor({
                   className="btn-primary btn-sm"
                   type="button"
                   disabled={!inputVal.trim() || addAsTarget.isPending}
-                  onClick={() => handleAddParent(level.subtype, level)}
+                  onClick={() => handleAddParent(level.subtype)}
                 >
                   Set
                 </button>

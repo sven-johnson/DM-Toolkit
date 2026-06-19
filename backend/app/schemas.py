@@ -617,6 +617,7 @@ class WikiArticleDetail(WikiArticleOut):
 class WikiAddAssociationRequest(BaseModel):
     target_title: str
     target_category: str = "other"
+    target_location_subtype: Optional[str] = None
     association_label: str
 
 
@@ -629,6 +630,7 @@ class WikiAddAssociationResult(BaseModel):
 class WikiAddAssociationAsTargetRequest(BaseModel):
     source_title: str
     source_category: str = "other"
+    source_location_subtype: Optional[str] = None
     association_label: str
 
 

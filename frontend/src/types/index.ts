@@ -210,6 +210,7 @@ export interface WikiAssociationDisplay {
 export interface WikiAddAssociationAsTargetRequest {
   source_title: string
   source_category: string
+  source_location_subtype?: string | null
   association_label: string
 }
 
@@ -220,6 +221,7 @@ export interface WikiArticleDetail extends WikiArticle {
 export interface WikiAddAssociationRequest {
   target_title: string
   target_category: string
+  target_location_subtype?: string | null
   association_label: string
 }
 

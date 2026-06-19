@@ -28,6 +28,117 @@ from ..schemas import (
 
 router = APIRouter()
 
+# ---------------------------------------------------------------------------
+# Location hierarchy constants — mirrors frontend/src/constants/wiki.ts
+# ---------------------------------------------------------------------------
+
+# Association label used when an article of this subtype is the hierarchy CHILD
+# in a Parent --label--> Child edge (e.g. World --"kingdom"--> Kingdom).
+LOCATION_CHILD_LABEL: dict[str, str] = {
+    "world": "world",
+    "kingdom": "kingdom",
+    "city": "city",
+    "district": "district",
+    "scene": "scene location",
+}
+
+# Hierarchy depth, largest to smallest.
+LOCATION_LEVEL_INDEX: dict[str, int] = {
+    "world": 0,
+    "kingdom": 1,
+    "city": 2,
+    "district": 3,
+    "scene": 4,
+}
+
+
+def _add_missing_location_associations(
+    db: DBSession, source_ids: set[str], target_id: str, label: str
+) -> None:
+    """Create source -> label -> target_id edges for any source_ids that don't
+    already have that exact edge. Used for hierarchy inheritance — silently
+    skips edges that already exist instead of raising a conflict."""
+    source_ids = {sid for sid in source_ids if sid != target_id}
+    if not source_ids:
+        return
+    existing = {
+        row.source_article_id
+        for row in db.query(WikiAssociation).filter(
+            WikiAssociation.target_article_id == target_id,
+            WikiAssociation.association_label == label,
+            WikiAssociation.source_article_id.in_(source_ids),
+        )
+    }
+    for source_id in source_ids - existing:
+        db.add(
+            WikiAssociation(
+                id=str(uuid_lib.uuid4()),
+                source_article_id=source_id,
+                target_article_id=target_id,
+                association_label=label,
+            )
+        )
+
+
+def _propagate_ancestors_to_new_child(
+    db: DBSession, parent: WikiArticle, child: WikiArticle, child_label: str
+) -> None:
+    """`child` was just created as the hierarchy child of `parent` (e.g. a new
+    Scene Location created inside an existing Neighborhood/District). Copy
+    `parent`'s own known ancestors (its World, Kingdom, City, ...) directly
+    onto `child`, so the child doesn't have to be re-linked to each one by hand."""
+    if parent.category != "location" or not parent.location_subtype:
+        return
+    parent_label = LOCATION_CHILD_LABEL.get(parent.location_subtype)
+    if not parent_label:
+        return
+
+    ancestor_ids = {
+        row.source_article_id
+        for row in db.query(WikiAssociation).filter(
+            WikiAssociation.target_article_id == parent.id,
+            WikiAssociation.association_label == parent_label,
+        )
+    }
+    _add_missing_location_associations(db, ancestor_ids, child.id, child_label)
+
+
+def _propagate_known_ancestors_to_new_parent(
+    db: DBSession, article: WikiArticle, new_parent: WikiArticle, article_label: str
+) -> None:
+    """`new_parent` was just created as the hierarchy parent of `article` (e.g.
+    setting a brand-new Kingdom as the parent of an existing City that already
+    has a World set). Copy `article`'s OTHER known ancestors that are larger
+    than `new_parent` directly onto `new_parent`."""
+    if (
+        article.category != "location"
+        or not article.location_subtype
+        or new_parent.category != "location"
+        or not new_parent.location_subtype
+    ):
+        return
+    new_parent_level = LOCATION_LEVEL_INDEX.get(new_parent.location_subtype)
+    new_parent_label = LOCATION_CHILD_LABEL.get(new_parent.location_subtype)
+    if new_parent_level is None or not new_parent_label:
+        return
+
+    rows = (
+        db.query(WikiAssociation, WikiArticle)
+        .join(WikiArticle, WikiArticle.id == WikiAssociation.source_article_id)
+        .filter(
+            WikiAssociation.target_article_id == article.id,
+            WikiAssociation.association_label == article_label,
+        )
+        .all()
+    )
+    grand_ancestor_ids = set()
+    for _link, ancestor_article in rows:
+        level = LOCATION_LEVEL_INDEX.get(ancestor_article.location_subtype)
+        if level is not None and level < new_parent_level:
+            grand_ancestor_ids.add(ancestor_article.id)
+
+    _add_missing_location_associations(db, grand_ancestor_ids, new_parent.id, new_parent_label)
+
 
 def _hydrate_associations(
     article: WikiArticle, db: DBSession
@@ -601,6 +712,7 @@ def add_association(
             campaign_id=article.campaign_id,
             title=body.target_title,
             category=body.target_category,
+            location_subtype=body.target_location_subtype,
             is_stub=True,
             public_content="",
             private_content="",
@@ -629,6 +741,16 @@ def add_association(
         association_label=body.association_label,
     )
     db.add(assoc)
+
+    # If this is a brand-new sub-location, inherit the parent's own ancestor
+    # chain (its World, Kingdom, City, ...) directly onto it.
+    if (
+        stub_created
+        and target.location_subtype
+        and LOCATION_CHILD_LABEL.get(target.location_subtype) == body.association_label
+    ):
+        _propagate_ancestors_to_new_child(db, article, target, body.association_label)
+
     db.commit()
     db.refresh(assoc)
 
@@ -674,6 +796,7 @@ def add_association_as_target(
             campaign_id=article.campaign_id,
             title=body.source_title,
             category=body.source_category,
+            location_subtype=body.source_location_subtype,
             is_stub=True,
             public_content="",
             private_content="",
@@ -702,6 +825,17 @@ def add_association_as_target(
         association_label=body.association_label,
     )
     db.add(assoc)
+
+    # If this is a brand-new ancestor stub, inherit article's OTHER known
+    # larger ancestors (e.g. setting a new Kingdom on a City that already has
+    # a World set should also link that World to the new Kingdom).
+    if (
+        stub_created
+        and article.location_subtype
+        and LOCATION_CHILD_LABEL.get(article.location_subtype) == body.association_label
+    ):
+        _propagate_known_ancestors_to_new_parent(db, article, source, body.association_label)
+
     db.commit()
     db.refresh(assoc)
 
@@ -710,8 +844,6 @@ def add_association_as_target(
         stub_created=stub_created,
         stub_article_id=stub_article_id,
     )
-
-
 
 
 @router.delete(

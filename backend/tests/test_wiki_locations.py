@@ -5,6 +5,7 @@ Tests for wiki location features:
 - POST /wiki/{id}/associations/as-target (reverse-direction association)
 - other_article_location_subtype in WikiAssociationDisplay
 - faction_org category
+- location_subtype auto-set on stub creation via association endpoints
 """
 
 import pytest
@@ -67,12 +68,14 @@ def add_association(
     target_title: str,
     label: str,
     target_category: str = "location",
+    target_location_subtype: str | None = None,
 ) -> dict:
     resp = client.post(
         f"/wiki/{source_id}/associations",
         json={
             "target_title": target_title,
             "target_category": target_category,
+            "target_location_subtype": target_location_subtype,
             "association_label": label,
         },
         headers=auth_headers,
@@ -88,12 +91,14 @@ def add_as_target(
     source_title: str,
     label: str,
     source_category: str = "location",
+    source_location_subtype: str | None = None,
 ) -> dict:
     resp = client.post(
         f"/wiki/{target_id}/associations/as-target",
         json={
             "source_title": source_title,
             "source_category": source_category,
+            "source_location_subtype": source_location_subtype,
             "association_label": label,
         },
         headers=auth_headers,
@@ -629,3 +634,296 @@ class TestFactionOrgCategory:
         assert len(detail["associations"]) == 1
         assert detail["associations"][0]["other_article_title"] == "Waterdeep"
         assert detail["associations"][0]["association_label"] == "based in"
+
+
+# ---------------------------------------------------------------------------
+# Auto-set location_subtype when a sub-/super-location stub is created
+# ---------------------------------------------------------------------------
+
+
+class TestStubLocationSubtype:
+
+    def test_child_stub_gets_location_subtype_via_standard_endpoint(
+        self, client: TestClient, auth_headers: dict, campaign_id: str
+    ):
+        """Adding a not-yet-existing City under a Kingdom from the parent editor
+        must create the City stub with location_subtype='city' set."""
+        kingdom = make_location(client, auth_headers, campaign_id, "Cormyr", "kingdom")
+
+        result = add_association(
+            client,
+            auth_headers,
+            kingdom["id"],
+            "Suzail",
+            "city",
+            target_category="location",
+            target_location_subtype="city",
+        )
+        assert result["stub_created"] is True
+
+        stub = get_article(client, auth_headers, result["stub_article_id"])
+        assert stub["title"] == "Suzail"
+        assert stub["category"] == "location"
+        assert stub["location_subtype"] == "city"
+        assert stub["is_stub"] is True
+
+    def test_parent_stub_gets_location_subtype_via_as_target_endpoint(
+        self, client: TestClient, auth_headers: dict, campaign_id: str
+    ):
+        """Setting a not-yet-existing World as a Kingdom's parent from the child
+        editor must create the World stub with location_subtype='world' set."""
+        kingdom = make_location(client, auth_headers, campaign_id, "Cormyr", "kingdom")
+
+        result = add_as_target(
+            client,
+            auth_headers,
+            kingdom["id"],
+            "Toril",
+            "kingdom",
+            source_category="location",
+            source_location_subtype="world",
+        )
+        assert result["stub_created"] is True
+
+        stub = get_article(client, auth_headers, result["stub_article_id"])
+        assert stub["title"] == "Toril"
+        assert stub["category"] == "location"
+        assert stub["location_subtype"] == "world"
+        assert stub["is_stub"] is True
+
+    def test_no_subtype_set_when_not_provided(
+        self, client: TestClient, auth_headers: dict, campaign_id: str
+    ):
+        """Omitting target_location_subtype (e.g. for non-hierarchy associations)
+        must leave the stub's location_subtype null, as before."""
+        world = make_location(client, auth_headers, campaign_id, "Oerth", "world")
+
+        result = add_association(client, auth_headers, world["id"], "Mystra", "patron deity", "deity")
+        assert result["stub_created"] is True
+
+        stub = get_article(client, auth_headers, result["stub_article_id"])
+        assert stub["category"] == "deity"
+        assert stub["location_subtype"] is None
+
+    def test_existing_article_subtype_not_overwritten(
+        self, client: TestClient, auth_headers: dict, campaign_id: str
+    ):
+        """If the target already exists with its own subtype, adding an
+        association must not change it, even if a different subtype is passed."""
+        city = make_location(client, auth_headers, campaign_id, "Suzail", "city")
+        kingdom = make_location(client, auth_headers, campaign_id, "Cormyr", "kingdom")
+
+        result = add_association(
+            client,
+            auth_headers,
+            kingdom["id"],
+            "Suzail",
+            "city",
+            target_category="location",
+            target_location_subtype="district",  # deliberately wrong/irrelevant
+        )
+        assert result["stub_created"] is False
+
+        detail = get_article(client, auth_headers, city["id"])
+        assert detail["location_subtype"] == "city"
+
+    def test_full_hierarchy_built_entirely_from_stubs_has_correct_subtypes(
+        self, client: TestClient, auth_headers: dict, campaign_id: str
+    ):
+        """Simulates building a whole World→Kingdom→City chain by only ever
+        creating the top World article and adding children through the editor —
+        every stub along the way should get the right subtype automatically."""
+        world = make_location(client, auth_headers, campaign_id, "Toril", "world")
+
+        kingdom_result = add_association(
+            client, auth_headers, world["id"], "Cormyr", "kingdom",
+            target_category="location", target_location_subtype="kingdom",
+        )
+        kingdom_id = kingdom_result["stub_article_id"]
+
+        city_result = add_association(
+            client, auth_headers, kingdom_id, "Suzail", "city",
+            target_category="location", target_location_subtype="city",
+        )
+        city_id = city_result["stub_article_id"]
+
+        kingdom_detail = get_article(client, auth_headers, kingdom_id)
+        city_detail = get_article(client, auth_headers, city_id)
+
+        assert kingdom_detail["location_subtype"] == "kingdom"
+        assert city_detail["location_subtype"] == "city"
+
+        # And the tree-building endpoint reflects the same data
+        by_title = {a["title"]: a for a in get_locations(client, auth_headers, campaign_id)}
+        assert by_title["Cormyr"]["location_subtype"] == "kingdom"
+        assert by_title["Suzail"]["location_subtype"] == "city"
+
+
+# ---------------------------------------------------------------------------
+# Hierarchy inheritance: a new sub-/super-location stub inherits the existing
+# article's other known hierarchy associations
+# ---------------------------------------------------------------------------
+
+
+class TestLocationHierarchyInheritance:
+
+    def test_new_scene_inherits_full_ancestor_chain_from_neighborhood(
+        self, client: TestClient, auth_headers: dict, campaign_id: str
+    ):
+        """Exact scenario from the feature request: a District/Neighborhood
+        that already has its World, Kingdom, and City directly set must pass
+        all three down to a brand-new Scene Location created as its child,
+        in addition to the District link itself."""
+        make_location(client, auth_headers, campaign_id, "Toril", "world")
+        make_location(client, auth_headers, campaign_id, "Cormyr", "kingdom")
+        make_location(client, auth_headers, campaign_id, "Suzail", "city")
+        district = make_location(client, auth_headers, campaign_id, "Harbor Ward", "district")
+
+        # Establish the District's full ancestor chain directly, as the
+        # "editable associations for all larger locations" UI would do.
+        add_as_target(client, auth_headers, district["id"], "Toril", "district", source_location_subtype="world")
+        add_as_target(client, auth_headers, district["id"], "Cormyr", "district", source_location_subtype="kingdom")
+        add_as_target(client, auth_headers, district["id"], "Suzail", "district", source_location_subtype="city")
+
+        result = add_association(
+            client, auth_headers, district["id"], "The Rusty Anchor", "scene location",
+            target_category="location", target_location_subtype="scene",
+        )
+        assert result["stub_created"] is True
+
+        scene_detail = get_article(client, auth_headers, result["stub_article_id"])
+        assocs = scene_detail["associations"]
+        assert len(assocs) == 4
+        assert all(a["association_label"] == "scene location" for a in assocs)
+        assert all(a["direction"] == "to" for a in assocs)
+
+        by_subtype = {a["other_article_location_subtype"]: a["other_article_title"] for a in assocs}
+        assert by_subtype == {
+            "world": "Toril",
+            "kingdom": "Cormyr",
+            "city": "Suzail",
+            "district": "Harbor Ward",
+        }
+
+    def test_new_child_inherits_single_ancestor(
+        self, client: TestClient, auth_headers: dict, campaign_id: str
+    ):
+        world = make_location(client, auth_headers, campaign_id, "Toril", "world")
+        kingdom = make_location(client, auth_headers, campaign_id, "Cormyr", "kingdom")
+        add_association(client, auth_headers, world["id"], "Cormyr", "kingdom", target_location_subtype="kingdom")
+
+        result = add_association(
+            client, auth_headers, kingdom["id"], "Suzail", "city", target_location_subtype="city",
+        )
+        assert result["stub_created"] is True
+
+        city_detail = get_article(client, auth_headers, result["stub_article_id"])
+        assocs = city_detail["associations"]
+        assert len(assocs) == 2
+        by_subtype = {a["other_article_location_subtype"]: a["other_article_title"] for a in assocs}
+        assert by_subtype == {"kingdom": "Cormyr", "world": "Toril"}
+        assert all(a["association_label"] == "city" for a in assocs)
+
+    def test_propagation_compounds_across_multiple_creation_steps(
+        self, client: TestClient, auth_headers: dict, campaign_id: str
+    ):
+        """Building World -> Kingdom -> City -> District purely by repeatedly
+        adding a new child to the most-recently-created article should still
+        leave every descendant linked to every one of its real ancestors."""
+        world = make_location(client, auth_headers, campaign_id, "Oerth", "world")
+
+        kingdom_result = add_association(
+            client, auth_headers, world["id"], "Keoland", "kingdom", target_location_subtype="kingdom",
+        )
+        kingdom_id = kingdom_result["stub_article_id"]
+
+        city_result = add_association(
+            client, auth_headers, kingdom_id, "Niole Dra", "city", target_location_subtype="city",
+        )
+        city_id = city_result["stub_article_id"]
+        city_detail = get_article(client, auth_headers, city_id)
+        assert len(city_detail["associations"]) == 2
+
+        district_result = add_association(
+            client, auth_headers, city_id, "Harbor District", "district", target_location_subtype="district",
+        )
+        district_id = district_result["stub_article_id"]
+        district_detail = get_article(client, auth_headers, district_id)
+        assert len(district_detail["associations"]) == 3
+        subtypes = {a["other_article_location_subtype"] for a in district_detail["associations"]}
+        assert subtypes == {"world", "kingdom", "city"}
+
+    def test_new_parent_stub_inherits_existing_articles_larger_ancestors(
+        self, client: TestClient, auth_headers: dict, campaign_id: str
+    ):
+        """Setting a brand-new Kingdom as the parent of an existing City that
+        already has a World set must also link that World to the new Kingdom."""
+        make_location(client, auth_headers, campaign_id, "Toril", "world")
+        city = make_location(client, auth_headers, campaign_id, "Suzail", "city")
+        add_as_target(client, auth_headers, city["id"], "Toril", "city", source_location_subtype="world")
+
+        result = add_as_target(
+            client, auth_headers, city["id"], "Cormyr", "city", source_location_subtype="kingdom",
+        )
+        assert result["stub_created"] is True
+
+        kingdom_detail = get_article(client, auth_headers, result["stub_article_id"])
+        assocs = kingdom_detail["associations"]
+        assert len(assocs) == 2
+        by_label = {a["association_label"]: a for a in assocs}
+        assert by_label["city"]["other_article_title"] == "Suzail"
+        assert by_label["city"]["direction"] == "from"
+        assert by_label["kingdom"]["other_article_title"] == "Toril"
+        assert by_label["kingdom"]["direction"] == "to"
+
+    def test_propagation_does_not_apply_when_child_already_exists(
+        self, client: TestClient, auth_headers: dict, campaign_id: str
+    ):
+        """Linking an already-existing location as a child must not silently
+        attach ancestors it didn't already have — only brand-new stubs inherit."""
+        world = make_location(client, auth_headers, campaign_id, "Toril", "world")
+        kingdom = make_location(client, auth_headers, campaign_id, "Cormyr", "kingdom")
+        city = make_location(client, auth_headers, campaign_id, "Suzail", "city")
+        add_association(client, auth_headers, world["id"], "Cormyr", "kingdom", target_location_subtype="kingdom")
+
+        result = add_association(
+            client, auth_headers, kingdom["id"], "Suzail", "city", target_location_subtype="city",
+        )
+        assert result["stub_created"] is False
+
+        city_detail = get_article(client, auth_headers, city["id"])
+        assert len(city_detail["associations"]) == 1
+        assert city_detail["associations"][0]["other_article_location_subtype"] == "kingdom"
+
+    def test_propagation_does_not_apply_for_non_hierarchy_labels(
+        self, client: TestClient, auth_headers: dict, campaign_id: str
+    ):
+        """A custom association label (not one of the recognized hierarchy
+        labels) must never trigger ancestor inheritance, even between two
+        location-category articles."""
+        world = make_location(client, auth_headers, campaign_id, "Toril", "world")
+        kingdom = make_location(client, auth_headers, campaign_id, "Cormyr", "kingdom")
+        add_association(client, auth_headers, world["id"], "Cormyr", "kingdom", target_location_subtype="kingdom")
+
+        result = add_association(
+            client, auth_headers, kingdom["id"], "Secret Vault", "guards",
+            target_category="location", target_location_subtype="district",
+        )
+        assert result["stub_created"] is True
+
+        vault_detail = get_article(client, auth_headers, result["stub_article_id"])
+        assert len(vault_detail["associations"]) == 1
+        assert vault_detail["associations"][0]["association_label"] == "guards"
+
+    def test_propagation_does_not_apply_without_target_location_subtype(
+        self, client: TestClient, auth_headers: dict, campaign_id: str
+    ):
+        """Stub creation for a non-location association (e.g. linking a deity)
+        must never trigger hierarchy inheritance."""
+        world = make_location(client, auth_headers, campaign_id, "Toril", "world")
+
+        result = add_association(client, auth_headers, world["id"], "Mystra", "patron deity", "deity")
+        assert result["stub_created"] is True
+
+        deity_detail = get_article(client, auth_headers, result["stub_article_id"])
+        assert len(deity_detail["associations"]) == 1
