@@ -555,6 +555,7 @@ class WikiArticleCreate(BaseModel):
     campaign_id: str
     title: str
     category: str = "other"
+    location_subtype: Optional[str] = None
     is_stub: bool = False
     image_url: Optional[str] = None
     tags: Optional[list[str]] = None
@@ -565,6 +566,7 @@ class WikiArticleCreate(BaseModel):
 class WikiArticleUpdate(BaseModel):
     title: str
     category: str
+    location_subtype: Optional[str] = None
     is_stub: bool
     image_url: Optional[str]
     tags: Optional[list[str]]
@@ -579,6 +581,7 @@ class WikiArticleOut(BaseModel):
     campaign_id: str
     title: str
     category: str
+    location_subtype: Optional[str] = None
     is_stub: bool
     image_url: Optional[str]
     tags: Optional[list[str]]
@@ -603,6 +606,7 @@ class WikiAssociationDisplay(BaseModel):
     other_article_id: str
     other_article_title: str
     other_article_category: str
+    other_article_location_subtype: Optional[str] = None
     direction: str  # 'from' (this article is source) | 'to' (this article is target)
 
 
@@ -620,6 +624,12 @@ class WikiAddAssociationResult(BaseModel):
     association_id: str
     stub_created: bool
     stub_article_id: Optional[str] = None
+
+
+class WikiAddAssociationAsTargetRequest(BaseModel):
+    source_title: str
+    source_category: str = "other"
+    association_label: str
 
 
 class WikiImportAssociation(BaseModel):

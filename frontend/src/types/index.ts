@@ -187,6 +187,7 @@ export interface WikiArticle {
   campaign_id: string
   title: string
   category: string
+  location_subtype: string | null
   is_stub: boolean
   image_url: string | null
   tags: string[] | null
@@ -202,7 +203,14 @@ export interface WikiAssociationDisplay {
   other_article_id: string
   other_article_title: string
   other_article_category: string
+  other_article_location_subtype: string | null
   direction: 'from' | 'to'
+}
+
+export interface WikiAddAssociationAsTargetRequest {
+  source_title: string
+  source_category: string
+  association_label: string
 }
 
 export interface WikiArticleDetail extends WikiArticle {

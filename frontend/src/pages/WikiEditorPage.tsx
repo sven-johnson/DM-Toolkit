@@ -2,9 +2,18 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useCampaignId } from '../context/CampaignContext'
 import { MarkdownBody } from '../components/MarkdownBody'
-import { CATEGORY_COLORS, CATEGORY_LABELS, WIKI_CATEGORIES, type WikiCategory } from '../constants/wiki'
+import {
+  CATEGORY_COLORS,
+  CATEGORY_LABELS,
+  LOCATION_HIERARCHY,
+  LOCATION_SUBTYPE_INDEX,
+  WIKI_CATEGORIES,
+  type LocationSubtype,
+  type WikiCategory,
+} from '../constants/wiki'
 import {
   useAddWikiAssociation,
+  useAddWikiAssociationAsTarget,
   useCreateWikiArticle,
   useDeleteWikiAssociation,
   useUpdateWikiArticle,
@@ -13,6 +22,233 @@ import {
 } from '../hooks/useWiki'
 import apiClient from '../api/client'
 import { getObjectKeyFromUrl } from '../lib/imageUrl'
+import type { WikiAssociationDisplay } from '../types'
+
+// ---------------------------------------------------------------------------
+// Location hierarchy editor helpers
+// ---------------------------------------------------------------------------
+
+interface LocationHierarchyEditorProps {
+  articleId: string
+  campaignId: string
+  subtype: LocationSubtype
+  associations: WikiAssociationDisplay[]
+  allArticles: { id: string; title: string; category: string; location_subtype: string | null }[]
+}
+
+function LocationHierarchyEditor({
+  articleId,
+  campaignId,
+  subtype,
+  associations,
+  allArticles,
+}: LocationHierarchyEditorProps) {
+  const myLevel = LOCATION_SUBTYPE_INDEX[subtype]
+  const addAsTarget = useAddWikiAssociationAsTarget(articleId, campaignId)
+  const addChild = useAddWikiAssociation(articleId, campaignId)
+  const deleteAssoc = useDeleteWikiAssociation(articleId, campaignId)
+
+  // Inputs for each parent level
+  const [parentInputs, setParentInputs] = useState<Record<string, string>>({})
+  const [childInput, setChildInput] = useState('')
+
+  // Parent levels: all levels above current
+  const parentLevels = LOCATION_HIERARCHY.slice(0, myLevel)
+  // Child level: one level below (if any)
+  const childLevel = myLevel < LOCATION_HIERARCHY.length - 1 ? LOCATION_HIERARCHY[myLevel + 1] : null
+
+  function getParentAssoc(parentSubtype: LocationSubtype) {
+    // Parent is SOURCE of an incoming association with label = current article's childLabel
+    const myChildLabel = LOCATION_HIERARCHY[myLevel].childLabel
+    return associations.find(
+      (a) =>
+        a.direction === 'to' &&
+        a.association_label === myChildLabel &&
+        a.other_article_location_subtype === parentSubtype,
+    )
+  }
+
+  function getChildAssocs() {
+    if (!childLevel) return []
+    return associations.filter(
+      (a) => a.direction === 'from' && a.association_label === childLevel.childLabel,
+    )
+  }
+
+  function handleAddParent(parentSubtype: LocationSubtype, parentLevel: typeof LOCATION_HIERARCHY[number]) {
+    const value = parentInputs[parentSubtype]?.trim()
+    if (!value) return
+    const myChildLabel = LOCATION_HIERARCHY[myLevel].childLabel
+    addAsTarget.mutate(
+      { source_title: value, source_category: 'location', association_label: myChildLabel },
+      { onSuccess: () => setParentInputs((prev) => ({ ...prev, [parentSubtype]: '' })) },
+    )
+    void parentLevel // suppress lint
+  }
+
+  function handleAddChild() {
+    if (!childLevel || !childInput.trim()) return
+    addChild.mutate(
+      { target_title: childInput.trim(), target_category: 'location', association_label: childLevel.childLabel },
+      { onSuccess: () => setChildInput('') },
+    )
+  }
+
+  const childAssocs = getChildAssocs()
+
+  return (
+    <div className="wiki-assoc-manager" style={{ maxWidth: 760, marginTop: '0.5rem' }}>
+      <div className="wiki-assoc-manager-title">Location Hierarchy</div>
+
+      {/* Parent sections */}
+      {parentLevels.map((level) => {
+        const existing = getParentAssoc(level.subtype)
+        const inputVal = parentInputs[level.subtype] ?? ''
+        const locationArticles = allArticles.filter(
+          (a) => a.category === 'location' && a.location_subtype === level.subtype && a.id !== articleId,
+        )
+        return (
+          <div key={level.subtype} style={{ marginBottom: '0.75rem' }}>
+            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>
+              {level.label}
+            </div>
+            {existing ? (
+              <div className="wiki-assoc-row">
+                <span
+                  className="wiki-category-badge"
+                  style={{ color: CATEGORY_COLORS['location'], flexShrink: 0 }}
+                >
+                  Location
+                </span>
+                <Link
+                  to={`/wiki/${existing.other_article_id}`}
+                  style={{ fontWeight: 500, color: 'var(--text-heading)', flex: 1, fontSize: '0.9rem' }}
+                >
+                  {existing.other_article_title}
+                </Link>
+                <button
+                  className="btn-icon btn-danger"
+                  type="button"
+                  onClick={() => deleteAssoc.mutate(existing.id)}
+                  disabled={deleteAssoc.isPending}
+                  title="Remove"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div style={{ flex: 1 }}>
+                  <input
+                    className="input"
+                    placeholder={`${level.label} name…`}
+                    value={inputVal}
+                    onChange={(e) =>
+                      setParentInputs((prev) => ({ ...prev, [level.subtype]: e.target.value }))
+                    }
+                    list={`loc-parent-${level.subtype}`}
+                    autoComplete="off"
+                  />
+                  <datalist id={`loc-parent-${level.subtype}`}>
+                    {locationArticles.map((a) => (
+                      <option key={a.id} value={a.title} />
+                    ))}
+                  </datalist>
+                </div>
+                <button
+                  className="btn-primary btn-sm"
+                  type="button"
+                  disabled={!inputVal.trim() || addAsTarget.isPending}
+                  onClick={() => handleAddParent(level.subtype, level)}
+                >
+                  Set
+                </button>
+              </div>
+            )}
+          </div>
+        )
+      })}
+
+      {/* Child section */}
+      {childLevel && (
+        <div>
+          <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>
+            {childLevel.plural}
+          </div>
+
+          {childAssocs.map((assoc) => (
+            <div key={assoc.id} className="wiki-assoc-row">
+              <span
+                className="wiki-category-badge"
+                style={{ color: CATEGORY_COLORS['location'], flexShrink: 0 }}
+              >
+                Location
+              </span>
+              <Link
+                to={`/wiki/${assoc.other_article_id}`}
+                style={{ fontWeight: 500, color: 'var(--text-heading)', flex: 1, fontSize: '0.9rem' }}
+              >
+                {assoc.other_article_title}
+              </Link>
+              <button
+                className="btn-icon btn-danger"
+                type="button"
+                onClick={() => deleteAssoc.mutate(assoc.id)}
+                disabled={deleteAssoc.isPending}
+                title="Remove"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.35rem' }}>
+            <div style={{ flex: 1 }}>
+              <input
+                className="input"
+                placeholder={`Add ${childLevel.label}…`}
+                value={childInput}
+                onChange={(e) => setChildInput(e.target.value)}
+                list="loc-child-options"
+                autoComplete="off"
+              />
+              <datalist id="loc-child-options">
+                {allArticles
+                  .filter((a) => a.category === 'location' && a.location_subtype === childLevel.subtype && a.id !== articleId)
+                  .map((a) => (
+                    <option key={a.id} value={a.title} />
+                  ))}
+              </datalist>
+            </div>
+            <button
+              className="btn-primary btn-sm"
+              type="button"
+              disabled={!childInput.trim() || addChild.isPending}
+              onClick={handleAddChild}
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      )}
+
+      {addAsTarget.isError && (
+        <p style={{ fontSize: '0.8rem', color: 'var(--danger)', marginTop: '0.25rem' }}>
+          Failed to set parent location.
+        </p>
+      )}
+      {addChild.isError && (
+        <p style={{ fontSize: '0.8rem', color: 'var(--danger)', marginTop: '0.25rem' }}>
+          Failed to add child location.
+        </p>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Main page
+// ---------------------------------------------------------------------------
 
 export function WikiEditorPage() {
   const { articleId } = useParams<{ articleId?: string }>()
@@ -26,6 +262,7 @@ export function WikiEditorPage() {
   // Form state
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState('other')
+  const [locationSubtype, setLocationSubtype] = useState<string>('')
   const [isStub, setIsStub] = useState(false)
   const [imageUrl, setImageUrl] = useState('')
   const [imageUploading, setImageUploading] = useState(false)
@@ -52,6 +289,7 @@ export function WikiEditorPage() {
     if (article) {
       setTitle(article.title)
       setCategory(article.category)
+      setLocationSubtype(article.location_subtype ?? '')
       setIsStub(article.is_stub)
       setImageUrl(article.image_url ?? '')
       setTagsInput(article.tags?.join(', ') ?? '')
@@ -68,12 +306,11 @@ export function WikiEditorPage() {
   async function handleImageFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    e.target.value = ''   // reset so the same file can be re-selected
+    e.target.value = ''
 
     setImageError(null)
     setImageUploading(true)
     try {
-      // Delete the previous R2 image if one exists
       if (imageUrl) {
         const oldKey = getObjectKeyFromUrl(imageUrl)
         if (oldKey) {
@@ -99,7 +336,7 @@ export function WikiEditorPage() {
       try {
         await apiClient.delete(`/images/${key}`)
       } catch {
-        // Non-fatal — clear the field regardless
+        // Non-fatal
       }
     }
     setImageUrl('')
@@ -116,6 +353,7 @@ export function WikiEditorPage() {
     const payload = {
       title: title.trim(),
       category,
+      location_subtype: category === 'location' && locationSubtype ? locationSubtype : null,
       is_stub: isStub,
       image_url: imageUrl.trim() || null,
       tags: buildTags(),
@@ -158,6 +396,28 @@ export function WikiEditorPage() {
 
   const saving = createArticle.isPending || updateArticle.isPending
 
+  // Determine if location hierarchy editor should show
+  const showLocationHierarchy =
+    isEditing &&
+    article &&
+    category === 'location' &&
+    locationSubtype !== ''
+
+  // Associations NOT managed by the location hierarchy editor
+  const nonHierarchyAssociations = article?.associations.filter((a) => {
+    if (!showLocationHierarchy) return true
+    const myLevel = LOCATION_SUBTYPE_INDEX[locationSubtype as LocationSubtype]
+    const myChildLabel = LOCATION_HIERARCHY[myLevel].childLabel
+    // Exclude incoming parent links (direction=to, label=my childLabel, category=location)
+    if (a.direction === 'to' && a.association_label === myChildLabel && a.other_article_category === 'location') return false
+    // Exclude outgoing child links (direction=from, label=child level's childLabel, category=location)
+    if (myLevel < LOCATION_HIERARCHY.length - 1) {
+      const childChildLabel = LOCATION_HIERARCHY[myLevel + 1].childLabel
+      if (a.direction === 'from' && a.association_label === childChildLabel && a.other_article_category === 'location') return false
+    }
+    return true
+  }) ?? []
+
   return (
     <div className="page">
       <div className="page-header">
@@ -189,7 +449,10 @@ export function WikiEditorPage() {
             <select
               className="input"
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={(e) => {
+                setCategory(e.target.value)
+                if (e.target.value !== 'location') setLocationSubtype('')
+              }}
             >
               {WIKI_CATEGORIES.map((c) => (
                 <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
@@ -197,6 +460,23 @@ export function WikiEditorPage() {
             </select>
           </div>
         </div>
+
+        {/* Location subtype — only for location category */}
+        {category === 'location' && (
+          <div className="wiki-editor-field" style={{ marginBottom: '0.75rem' }}>
+            <label className="wiki-editor-label">Location Type</label>
+            <select
+              className="input"
+              value={locationSubtype}
+              onChange={(e) => setLocationSubtype(e.target.value)}
+            >
+              <option value="">— unspecified —</option>
+              {LOCATION_HIERARCHY.map((l) => (
+                <option key={l.subtype} value={l.subtype}>{l.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Image upload */}
         <div className="wiki-editor-field">
@@ -341,14 +621,27 @@ export function WikiEditorPage() {
         </div>
       </form>
 
+      {/* Location Hierarchy Editor — only for location articles with a subtype */}
+      {showLocationHierarchy && article && (
+        <LocationHierarchyEditor
+          articleId={articleId!}
+          campaignId={campaignId!}
+          subtype={locationSubtype as LocationSubtype}
+          associations={article.associations}
+          allArticles={allArticles}
+        />
+      )}
+
       {/* Association manager — only available when editing */}
       {isEditing && article ? (
         <div className="wiki-assoc-manager" style={{ maxWidth: 760 }}>
-          <div className="wiki-assoc-manager-title">Associations</div>
+          <div className="wiki-assoc-manager-title">
+            {showLocationHierarchy ? 'Other Associations' : 'Associations'}
+          </div>
 
-          {article.associations.length > 0 ? (
+          {nonHierarchyAssociations.length > 0 ? (
             <div>
-              {article.associations.map((assoc) => (
+              {nonHierarchyAssociations.map((assoc) => (
                 <div key={assoc.id} className="wiki-assoc-row">
                   <span
                     className="wiki-category-badge"

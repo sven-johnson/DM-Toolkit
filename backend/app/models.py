@@ -295,6 +295,7 @@ class WikiArticle(Base):
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     category: Mapped[str] = mapped_column(String(50), nullable=False)
+    location_subtype: Mapped[str | None] = mapped_column(String(50), nullable=True)
     is_stub: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     image_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     tags: Mapped[list | None] = mapped_column(JSON, nullable=True)

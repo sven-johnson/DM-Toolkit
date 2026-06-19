@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import apiClient from '../api/client'
 import type {
+  WikiAddAssociationAsTargetRequest,
   WikiAddAssociationRequest,
   WikiAddAssociationResult,
   WikiArticle,
@@ -70,6 +71,7 @@ export function useCreateWikiArticle(campaignId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['campaigns', campaignId, 'wiki'] })
+      queryClient.invalidateQueries({ queryKey: ['campaigns', campaignId, 'wiki', 'locations'] })
     },
   })
 }
@@ -79,7 +81,7 @@ export function useUpdateWikiArticle(campaignId: string) {
   return useMutation<
     WikiArticle,
     Error,
-    { id: string; title: string; category: string; is_stub: boolean; image_url: string | null; tags: string[] | null; public_content: string; private_content: string }
+    { id: string; title: string; category: string; location_subtype: string | null; is_stub: boolean; image_url: string | null; tags: string[] | null; public_content: string; private_content: string }
   >({
     mutationFn: async ({ id, ...body }) => {
       const { data } = await apiClient.put<WikiArticle>(`/wiki/${id}`, body)
@@ -88,6 +90,7 @@ export function useUpdateWikiArticle(campaignId: string) {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns', campaignId, 'wiki'] })
       queryClient.invalidateQueries({ queryKey: ['wiki', id] })
+      queryClient.invalidateQueries({ queryKey: ['campaigns', campaignId, 'wiki', 'locations'] })
     },
   })
 }
@@ -117,7 +120,40 @@ export function useAddWikiAssociation(articleId: string, campaignId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['wiki', articleId] })
       queryClient.invalidateQueries({ queryKey: ['campaigns', campaignId, 'wiki'] })
+      queryClient.invalidateQueries({ queryKey: ['campaigns', campaignId, 'wiki', 'locations'] })
     },
+  })
+}
+
+export function useAddWikiAssociationAsTarget(articleId: string, campaignId: string) {
+  const queryClient = useQueryClient()
+  return useMutation<WikiAddAssociationResult, Error, WikiAddAssociationAsTargetRequest>({
+    mutationFn: async (body) => {
+      const { data } = await apiClient.post<WikiAddAssociationResult>(
+        `/wiki/${articleId}/associations/as-target`,
+        body,
+      )
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['wiki', articleId] })
+      queryClient.invalidateQueries({ queryKey: ['campaigns', campaignId, 'wiki'] })
+      queryClient.invalidateQueries({ queryKey: ['campaigns', campaignId, 'wiki', 'locations'] })
+    },
+  })
+}
+
+export function useLocationArticles(campaignId: string) {
+  return useQuery<WikiArticleDetail[]>({
+    queryKey: ['campaigns', campaignId, 'wiki', 'locations'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<WikiArticleDetail[]>('/wiki/locations', {
+        params: { campaign_id: campaignId },
+      })
+      return data
+    },
+    enabled: !!campaignId,
+    staleTime: 0,
   })
 }
 
@@ -130,6 +166,7 @@ export function useDeleteWikiAssociation(articleId: string, campaignId: string) 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['wiki', articleId] })
       queryClient.invalidateQueries({ queryKey: ['campaigns', campaignId, 'wiki'] })
+      queryClient.invalidateQueries({ queryKey: ['campaigns', campaignId, 'wiki', 'locations'] })
     },
   })
 }

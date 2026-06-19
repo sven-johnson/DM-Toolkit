@@ -3,8 +3,105 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useCampaignId, useCampaignRole } from '../context/CampaignContext'
 import { useCurrentUser } from '../hooks/useCurrentUser'
 import { MarkdownBody } from '../components/MarkdownBody'
-import { CATEGORY_COLORS, CATEGORY_LABELS, type WikiCategory } from '../constants/wiki'
+import {
+  CATEGORY_COLORS,
+  CATEGORY_LABELS,
+  LOCATION_HIERARCHY,
+  LOCATION_SUBTYPE_INDEX,
+  type LocationSubtype,
+  type WikiCategory,
+} from '../constants/wiki'
 import { exportWikiArticle, useDeleteWikiArticle, useWikiArticle } from '../hooks/useWiki'
+import type { WikiAssociationDisplay } from '../types'
+
+// ---------------------------------------------------------------------------
+// Location hierarchy view
+// ---------------------------------------------------------------------------
+
+interface LocationHierarchyViewProps {
+  subtype: LocationSubtype
+  associations: WikiAssociationDisplay[]
+}
+
+function LocationHierarchyView({ subtype, associations }: LocationHierarchyViewProps) {
+  const myLevel = LOCATION_SUBTYPE_INDEX[subtype]
+  const myChildLabel = LOCATION_HIERARCHY[myLevel].childLabel
+
+  // Parent associations: incoming (direction=to) with label = my childLabel
+  const parentAssocs = associations.filter(
+    (a) => a.direction === 'to' && a.association_label === myChildLabel && a.other_article_category === 'location',
+  )
+
+  // Child associations: outgoing (direction=from) with label = child's childLabel
+  const childLevel = myLevel < LOCATION_HIERARCHY.length - 1 ? LOCATION_HIERARCHY[myLevel + 1] : null
+  const childAssocs = childLevel
+    ? associations.filter(
+        (a) => a.direction === 'from' && a.association_label === childLevel.childLabel && a.other_article_category === 'location',
+      )
+    : []
+
+  if (parentAssocs.length === 0 && childAssocs.length === 0) return null
+
+  const myTypeLabel = LOCATION_HIERARCHY[myLevel].label
+
+  return (
+    <div className="wiki-assoc-panel" style={{ marginTop: '0.75rem' }}>
+      <div className="wiki-assoc-panel-title">Location Hierarchy</div>
+
+      {parentAssocs.length > 0 && (
+        <div style={{ marginBottom: '0.5rem' }}>
+          {parentAssocs.map((assoc) => {
+            const parentLevel = LOCATION_HIERARCHY.find(
+              (l) => l.subtype === assoc.other_article_location_subtype,
+            )
+            return (
+              <div key={assoc.id} style={{ fontSize: '0.85rem', marginBottom: '0.2rem' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  {parentLevel?.label ?? 'Parent'}:{' '}
+                </span>
+                <Link
+                  to={`/wiki/${assoc.other_article_id}`}
+                  style={{ color: CATEGORY_COLORS['location'], fontWeight: 500 }}
+                >
+                  {assoc.other_article_title}
+                </Link>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {parentAssocs.length > 0 && childAssocs.length > 0 && (
+        <div style={{ borderTop: '1px solid var(--border)', margin: '0.4rem 0' }} />
+      )}
+
+      {childAssocs.length > 0 && (
+        <div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>
+            {childLevel!.plural} of {myTypeLabel}
+          </div>
+          <div className="wiki-assoc-chips">
+            {childAssocs.map((assoc) => (
+              <Link
+                key={assoc.id}
+                to={`/wiki/${assoc.other_article_id}`}
+                className="wiki-assoc-chip"
+              >
+                <span className="wiki-assoc-chip-title">
+                  {assoc.other_article_title}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Main page
+// ---------------------------------------------------------------------------
 
 export function WikiArticlePage() {
   const { articleId } = useParams<{ articleId: string }>()
@@ -42,6 +139,32 @@ export function WikiArticlePage() {
 
   const catColor = CATEGORY_COLORS[article.category as WikiCategory] ?? '#888'
   const catLabel = CATEGORY_LABELS[article.category as WikiCategory] ?? article.category
+
+  const isLocation = article.category === 'location' && !!article.location_subtype
+  const locationSubtype = isLocation ? (article.location_subtype as LocationSubtype) : null
+
+  // Hierarchy-managed associations (excluded from the generic panel)
+  const hierarchyAssocIds = new Set<string>()
+  if (locationSubtype) {
+    const myLevel = LOCATION_SUBTYPE_INDEX[locationSubtype]
+    const myChildLabel = LOCATION_HIERARCHY[myLevel].childLabel
+    const childLevel = myLevel < LOCATION_HIERARCHY.length - 1 ? LOCATION_HIERARCHY[myLevel + 1] : null
+    article.associations.forEach((a) => {
+      if (a.direction === 'to' && a.association_label === myChildLabel && a.other_article_category === 'location') {
+        hierarchyAssocIds.add(a.id)
+      }
+      if (childLevel && a.direction === 'from' && a.association_label === childLevel.childLabel && a.other_article_category === 'location') {
+        hierarchyAssocIds.add(a.id)
+      }
+    })
+  }
+  const genericAssociations = article.associations.filter((a) => !hierarchyAssocIds.has(a.id))
+
+  const hasDetailCol =
+    article.image_url ||
+    genericAssociations.length > 0 ||
+    (article.tags && article.tags.length > 0) ||
+    (locationSubtype && article.associations.some((a) => hierarchyAssocIds.has(a.id)))
 
   return (
     <div className="page">
@@ -112,11 +235,16 @@ export function WikiArticlePage() {
           <span className="wiki-category-badge" style={{ color: catColor }}>
             {catLabel}
           </span>
+          {locationSubtype && (
+            <span className="wiki-category-badge" style={{ color: CATEGORY_COLORS['location'], fontSize: '0.75rem' }}>
+              {LOCATION_HIERARCHY.find((l) => l.subtype === locationSubtype)?.label}
+            </span>
+          )}
           {article.is_stub && <span className="wiki-stub-badge">Stub</span>}
         </div>
 
-        {/* Right details column — floated so main content flows beside then below */}
-        {(article.image_url || article.associations.length > 0 || (article.tags && article.tags.length > 0)) && (
+        {/* Right details column */}
+        {hasDetailCol && (
           <div className="wiki-details-col">
             {article.image_url && (
               <>
@@ -143,11 +271,19 @@ export function WikiArticlePage() {
               </>
             )}
 
-            {article.associations.length > 0 && (
+            {/* Location hierarchy panel */}
+            {locationSubtype && (
+              <LocationHierarchyView
+                subtype={locationSubtype}
+                associations={article.associations}
+              />
+            )}
+
+            {genericAssociations.length > 0 && (
               <div className="wiki-assoc-panel">
                 <div className="wiki-assoc-panel-title">Associations</div>
                 <div className="wiki-assoc-chips">
-                  {article.associations.map((assoc) => (
+                  {genericAssociations.map((assoc) => (
                     <Link
                       key={assoc.id}
                       to={`/wiki/${assoc.other_article_id}`}
@@ -189,7 +325,7 @@ export function WikiArticlePage() {
           </div>
         )}
 
-        {/* Main content — flows beside the float, then expands to full width below it */}
+        {/* Main content */}
         {article.public_content && (
           <div className="wiki-section">
             <div className="wiki-section-title">Public</div>

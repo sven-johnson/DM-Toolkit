@@ -10,6 +10,7 @@ from ..auth import get_current_user, require_campaign_role
 from ..database import get_db
 from ..models import Campaign, User, WikiArticle, WikiAssociation
 from ..schemas import (
+    WikiAddAssociationAsTargetRequest,
     WikiAddAssociationRequest,
     WikiAddAssociationResult,
     WikiArticleCreate,
@@ -69,6 +70,7 @@ def _hydrate_associations(
                 other_article_id=other_id,
                 other_article_title=other.title if other else "Unknown",
                 other_article_category=other.category if other else "other",
+                other_article_location_subtype=other.location_subtype if other else None,
                 direction=direction,
             )
         )
@@ -386,6 +388,29 @@ def _strip_private(article: WikiArticle, role: str | None) -> WikiArticle:
     return article
 
 
+@router.get("/locations", response_model=list[WikiArticleDetail])
+def list_location_articles(
+    campaign_id: str = Query(...),
+    db: DBSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> list[WikiArticleDetail]:
+    """Return all location articles with their associations for tree-view building."""
+    role = require_campaign_role(campaign_id, user, db)
+    articles = (
+        db.query(WikiArticle)
+        .filter(WikiArticle.campaign_id == campaign_id, WikiArticle.category == "location")
+        .order_by(WikiArticle.title)
+        .all()
+    )
+    result = []
+    for article in articles:
+        _strip_private(article, role)
+        article_base = WikiArticleOut.model_validate(article)
+        associations = _hydrate_associations(article, db)
+        result.append(WikiArticleDetail(**article_base.model_dump(), associations=associations))
+    return result
+
+
 @router.get("", response_model=list[WikiArticleOut])
 def list_wiki_articles(
     campaign_id: str = Query(...),
@@ -471,6 +496,7 @@ def update_wiki_article(
     require_campaign_role(article.campaign_id, user, db, min_role="game_master")
     article.title = body.title
     article.category = body.category
+    article.location_subtype = body.location_subtype
     article.is_stub = body.is_stub
     article.image_url = body.image_url
     article.tags = body.tags
@@ -611,6 +637,81 @@ def add_association(
         stub_created=stub_created,
         stub_article_id=stub_article_id,
     )
+
+
+@router.post(
+    "/{article_id}/associations/as-target",
+    response_model=WikiAddAssociationResult,
+    status_code=status.HTTP_201_CREATED,
+)
+def add_association_as_target(
+    article_id: str,
+    body: WikiAddAssociationAsTargetRequest,
+    db: DBSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> WikiAddAssociationResult:
+    """Create an association where article_id is the TARGET (not the source)."""
+    article = db.query(WikiArticle).filter(WikiArticle.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+    require_campaign_role(article.campaign_id, user, db, min_role="game_master")
+
+    source = (
+        db.query(WikiArticle)
+        .filter(
+            WikiArticle.campaign_id == article.campaign_id,
+            WikiArticle.title == body.source_title,
+        )
+        .first()
+    )
+
+    stub_created = False
+    stub_article_id: Optional[str] = None
+
+    if source is None:
+        source = WikiArticle(
+            id=str(uuid_lib.uuid4()),
+            campaign_id=article.campaign_id,
+            title=body.source_title,
+            category=body.source_category,
+            is_stub=True,
+            public_content="",
+            private_content="",
+        )
+        db.add(source)
+        db.flush()
+        stub_created = True
+        stub_article_id = source.id
+
+    existing = (
+        db.query(WikiAssociation)
+        .filter(
+            WikiAssociation.source_article_id == source.id,
+            WikiAssociation.target_article_id == article_id,
+            WikiAssociation.association_label == body.association_label,
+        )
+        .first()
+    )
+    if existing:
+        raise HTTPException(status_code=409, detail="This association already exists")
+
+    assoc = WikiAssociation(
+        id=str(uuid_lib.uuid4()),
+        source_article_id=source.id,
+        target_article_id=article_id,
+        association_label=body.association_label,
+    )
+    db.add(assoc)
+    db.commit()
+    db.refresh(assoc)
+
+    return WikiAddAssociationResult(
+        association_id=assoc.id,
+        stub_created=stub_created,
+        stub_article_id=stub_article_id,
+    )
+
+
 
 
 @router.delete(

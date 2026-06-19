@@ -57,6 +57,12 @@ export function Nav() {
               </>
             )}
             <Link
+              to="/locations"
+              className={`nav-link${isActive('/locations') ? ' active' : ''}`}
+            >
+              Locations
+            </Link>
+            <Link
               to="/wiki"
               className={`nav-link${isActive('/wiki') ? ' active' : ''}`}
             >

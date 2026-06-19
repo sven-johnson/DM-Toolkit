@@ -17,6 +17,7 @@ import { WikiEditorPage } from './pages/WikiEditorPage'
 import { UserSettingsPage } from './pages/UserSettingsPage'
 import { DownloadPage } from './pages/DownloadPage'
 import { MonsterFactoryPage } from './pages/MonsterFactory'
+import { LocationsPage } from './pages/LocationsPage'
 import { Nav } from './components/Nav'
 
 const queryClient = new QueryClient({
@@ -118,6 +119,16 @@ function AppLayout() {
                 <RequireGameMaster>
                   <CharactersPage />
                 </RequireGameMaster>
+              </RequireCampaign>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/locations"
+          element={
+            <RequireAuth>
+              <RequireCampaign>
+                <LocationsPage />
               </RequireCampaign>
             </RequireAuth>
           }
