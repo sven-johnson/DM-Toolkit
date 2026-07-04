@@ -42,4 +42,5 @@ export interface Effect {
   size: TokenSize
   opacity: number
   shape: 'square' | 'circle'
+  rotation?: number
 }

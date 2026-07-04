@@ -187,6 +187,16 @@ export function Controller() {
     background: true, effects: true, tokens: true, grid: true,
   })
 
+  // Escape closes the active stage modal
+  useEffect(() => {
+    if (!activeStageModal) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setActiveStageModal(null)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [activeStageModal])
+
   // Escape cancels placement and reopens the originating modal
   useEffect(() => {
     if (!activeDef && !activeAoe) return

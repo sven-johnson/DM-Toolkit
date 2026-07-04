@@ -67,6 +67,21 @@ export function ScenePresetsPanel({ onLoad }: Props) {
     }
   }
 
+  function handleLoadBlank() {
+    const s = useVttStore.getState()
+    onLoad({
+      backgroundSrc: '',
+      tokenDefs: s.tokenDefs,
+      effectDefs: s.effectDefs,
+      tokens: [],
+      effects: [],
+      aoeMarkers: [],
+      grid: { color: 0xffffff, opacity: 0.25, cellSize: 70, lineWidth: 1, originX: 0, originY: 0 },
+      layers: { background: true, effects: true, tokens: true, grid: true },
+      showAffectedArea: false,
+    })
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.5rem' }}>
@@ -93,36 +108,54 @@ export function ScenePresetsPanel({ onLoad }: Props) {
         <p style={{ fontSize: '0.78rem', color: 'var(--danger)', margin: '0 0 0.4rem' }}>{error}</p>
       )}
 
-      {presets.length === 0 ? (
-        <p className="cal-hint" style={{ margin: 0 }}>No saved scenes yet.</p>
-      ) : (
-        <div className="preset-list">
-          {presets.map((p) => (
-            <div key={p.id} className="preset-row">
-              <div className="preset-info">
-                <span className="preset-name">{p.name}</span>
-                <span className="preset-date">{formatDate(p.updatedAt)}</span>
-              </div>
-              <div className="preset-actions">
-                <button
-                  className="btn btn-secondary"
-                  style={{ fontSize: '0.75rem', padding: '0.2rem 0.55rem' }}
-                  onClick={() => onLoad(p.data)}
-                >
-                  Load
-                </button>
-                <button
-                  className="btn btn-danger"
-                  style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
-                  onClick={() => void handleDelete(p.id)}
-                  title="Delete preset"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-          ))}
+      <div className="preset-list">
+        {/* Built-in blank scene — always present, cannot be deleted */}
+        <div className="preset-row">
+          <div className="preset-info">
+            <span className="preset-name">Blank Scene</span>
+            <span className="preset-date">Default</span>
+          </div>
+          <div className="preset-actions">
+            <button
+              className="btn btn-secondary"
+              style={{ fontSize: '0.75rem', padding: '0.2rem 0.55rem' }}
+              onClick={handleLoadBlank}
+            >
+              Load
+            </button>
+          </div>
         </div>
+
+        {/* User-saved presets */}
+        {presets.map((p) => (
+          <div key={p.id} className="preset-row">
+            <div className="preset-info">
+              <span className="preset-name">{p.name}</span>
+              <span className="preset-date">{formatDate(p.updatedAt)}</span>
+            </div>
+            <div className="preset-actions">
+              <button
+                className="btn btn-secondary"
+                style={{ fontSize: '0.75rem', padding: '0.2rem 0.55rem' }}
+                onClick={() => onLoad(p.data)}
+              >
+                Load
+              </button>
+              <button
+                className="btn btn-danger"
+                style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
+                onClick={() => void handleDelete(p.id)}
+                title="Delete preset"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {presets.length === 0 && (
+        <p className="cal-hint" style={{ margin: '0.3rem 0 0' }}>No saved scenes yet.</p>
       )}
     </div>
   )

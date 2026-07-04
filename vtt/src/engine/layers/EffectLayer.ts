@@ -1,4 +1,4 @@
-import { Assets, Container, Graphics, Sprite, Text, Texture } from 'pixi.js'
+import { Assets, Container, Graphics, Sprite, Texture } from 'pixi.js'
 import type { Effect } from '../../shared/types/tokens'
 import type { GridConfig } from '../../store/vttStore'
 
@@ -6,7 +6,6 @@ interface EffectEntry {
   container: Container
   sprite: Sprite
   circleMask: Graphics | null
-  label: Text
   effect: Effect
 }
 
@@ -23,20 +22,10 @@ export class EffectLayer {
     if (!entry) {
       const c = new Container()
       const sprite = new Sprite()
-      const label = new Text({
-        text: effect.name,
-        style: {
-          fill: '#ffcc44',
-          fontSize: 11,
-          stroke: { color: '#000000', width: 2 },
-          fontFamily: 'sans-serif',
-        },
-      })
-      label.anchor.set(0.5, 0)
-      c.addChild(sprite, label)
+      c.addChild(sprite)
       this.container.addChild(c)
 
-      entry = { container: c, sprite, circleMask: null, label, effect }
+      entry = { container: c, sprite, circleMask: null, effect }
       this.entries.set(effect.id, entry)
 
       Assets.load<Texture>(effect.src)
@@ -58,7 +47,7 @@ export class EffectLayer {
   }
 
   private _layout(entry: EffectEntry, config: GridConfig): void {
-    const { effect, container, sprite, label } = entry
+    const { effect, container, sprite } = entry
     const { cellSize, originX, originY } = config
     const size = effect.size * cellSize
 
@@ -66,11 +55,9 @@ export class EffectLayer {
 
     if (effect.shape === 'circle') {
       const radius = size / 2
-      // Center circle effects on a grid intersection
       container.x = originX + effect.gridX * cellSize - radius
       container.y = originY + effect.gridY * cellSize - radius
 
-      // Rebuild circular mask
       if (entry.circleMask) {
         sprite.mask = null
         entry.circleMask.destroy()
@@ -80,6 +67,11 @@ export class EffectLayer {
       container.addChild(mask)
       sprite.mask = mask
       entry.circleMask = mask
+
+      sprite.anchor.set(0, 0)
+      sprite.x = 0
+      sprite.y = 0
+      sprite.rotation = 0
     } else {
       container.x = originX + effect.gridX * cellSize
       container.y = originY + effect.gridY * cellSize
@@ -89,16 +81,18 @@ export class EffectLayer {
         entry.circleMask.destroy()
         entry.circleMask = null
       }
+
+      // Rotate around the sprite center
+      sprite.anchor.set(0.5, 0.5)
+      sprite.x = size / 2
+      sprite.y = size / 2
+      sprite.rotation = ((effect.rotation ?? 0) * Math.PI) / 180
     }
 
     if (sprite.texture && sprite.texture.width > 0) {
       sprite.width = size
       sprite.height = size
     }
-
-    label.text = effect.name
-    label.x = size / 2
-    label.y = size + 2
   }
 
   reposition(config: GridConfig): void {

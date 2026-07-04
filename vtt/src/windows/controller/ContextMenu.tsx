@@ -127,7 +127,7 @@ export function ContextMenu({
         </>
       )}
 
-      {item.type === 'token' && onRotate && (
+      {(item.type === 'token' || (item.type === 'effect' && (item.data as Effect).shape !== 'circle')) && onRotate && (
         <>
           <div className="ctx-divider" />
           <div className="ctx-group-label">Rotate</div>

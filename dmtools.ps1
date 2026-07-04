@@ -104,6 +104,34 @@ function Stop-Services {
     Write-Host ""
 }
 
+function Invoke-VttBuild {
+    $VttDir = Join-Path $RootDir "vtt"
+
+    Write-Host ""
+    Write-Host "  DM Toolkit - VTT Build" -ForegroundColor Cyan
+    Write-Host "  -----------------------------------" -ForegroundColor DarkGray
+    Write-Step "Building VTT (this may take several minutes)..." "Yellow"
+    Write-Host ""
+
+    $origDir = Get-Location
+    try {
+        Set-Location $VttDir
+        & pnpm tauri build
+        $exitCode = $LASTEXITCODE
+    } finally {
+        Set-Location $origDir
+    }
+
+    Write-Host ""
+    if ($exitCode -eq 0) {
+        Write-Host "  VTT build complete." -ForegroundColor Green
+        Write-Host "  Installer: vtt\src-tauri\target\release\bundle\" -ForegroundColor DarkGray
+    } else {
+        Write-Step "Build failed (exit code $exitCode)." "Red"
+    }
+    Write-Host ""
+}
+
 function Invoke-VttRelease {
     param([switch]$Minor, [switch]$Major)
 
@@ -182,6 +210,7 @@ switch ($Command.ToLower()) {
     "start"       { Start-Services }
     "stop"        { Stop-Services }
     "restart"     { Stop-Services; Start-Sleep -Seconds 2; Start-Services }
+    "vtt-build"   { Invoke-VttBuild }
     "vtt-release" { Invoke-VttRelease -Minor:$Minor -Major:$Major }
     default {
         Write-Host ""
@@ -193,6 +222,7 @@ switch ($Command.ToLower()) {
         Write-Host "    start          Start MySQL, backend, and frontend" -ForegroundColor Gray
         Write-Host "    stop           Stop all services and shut down MySQL" -ForegroundColor Gray
         Write-Host "    restart        Stop then start all services" -ForegroundColor Gray
+        Write-Host "    vtt-build      Build the VTT app locally" -ForegroundColor Gray
         Write-Host "    vtt-release    Bump patch version and push release tag" -ForegroundColor Gray
         Write-Host "    vtt-release -Minor    Bump minor version (x.Y.0)" -ForegroundColor DarkGray
         Write-Host "    vtt-release -Major    Bump major version (X.0.0)" -ForegroundColor DarkGray

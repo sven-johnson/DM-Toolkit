@@ -13,6 +13,50 @@ import {
 import type { Effect, EffectDef, Token, TokenDef, TokenSize } from '../../shared/types/tokens'
 import { ContextMenu, type ContextItem } from './ContextMenu'
 
+// ── Map-level context menu ────────────────────────────────────────────────────
+
+interface MapCtxProps {
+  x: number; y: number
+  onRemoveAllTokens: () => void
+  onRemoveAllEffects: () => void
+  onRemoveAllAoe: () => void
+  onClose: () => void
+}
+
+function MapContextMenu({ x, y, onRemoveAllTokens, onRemoveAllEffects, onRemoveAllAoe, onClose }: MapCtxProps) {
+  const menuRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    function onMouseDown(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose()
+    }
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
+    document.addEventListener('mousedown', onMouseDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [onClose])
+
+  return (
+    <div ref={menuRef} className="ctx-menu" style={{ left: x, top: y }}>
+      <div className="ctx-header">Map</div>
+      <button className="ctx-item ctx-item--danger"
+        onClick={() => { onRemoveAllTokens(); onClose() }}>
+        Remove All Tokens
+      </button>
+      <button className="ctx-item ctx-item--danger"
+        onClick={() => { onRemoveAllEffects(); onClose() }}>
+        Remove All Effects
+      </button>
+      <button className="ctx-item ctx-item--danger"
+        onClick={() => { onRemoveAllAoe(); onClose() }}>
+        Remove All AOE Markers
+      </button>
+    </div>
+  )
+}
+
 // ── Module-level pure helpers ─────────────────────────────────────────────────
 
 type AoeRenderData = Readonly<{
@@ -229,7 +273,12 @@ export function StageMap({
   const [ghostPos,    setGhostPos]    = useState<GhostPos | null>(null)
   const [aoeGhost,    setAoeGhost]    = useState<AoeGhost | null>(null)
   const [contextMenu, setContextMenu] = useState<{ item: ContextItem; x: number; y: number } | null>(null)
+  const [mapContextMenu, setMapContextMenu] = useState<{ x: number; y: number } | null>(null)
   const [drawTick,    setDrawTick]    = useState(0)
+
+  // Tracks placement-time rotation for the AOE ghost; reset whenever activeAoe changes
+  const aoePlacementRotationRef = useRef(0)
+  useEffect(() => { aoePlacementRotationRef.current = activeAoe?.rotation ?? 0 }, [activeAoe])
 
   // Refs for IPC ghost deduplication
   const lastTokenGhostPos = useRef<{ gridX: number; gridY: number } | null>(null)
@@ -241,8 +290,8 @@ export function StageMap({
   const rotationCooldownMs = useVttStore((s) => s.rotationCooldownMs)
 
   // Ref snapshot for native event handlers (wheel)
-  const wheelRef = useRef({ playerReady, mapW, mapH, scale, grid: grid, activeEntity: null as ActiveEntity | null, cooldownMs: rotationCooldownMs })
-  useEffect(() => { wheelRef.current = { playerReady, mapW, mapH, scale, grid, activeEntity, cooldownMs: rotationCooldownMs } })
+  const wheelRef = useRef({ playerReady, mapW, mapH, scale, grid: grid, activeEntity: null as ActiveEntity | null, cooldownMs: rotationCooldownMs, activeAoe: activeAoe as AoeConfig | null })
+  useEffect(() => { wheelRef.current = { playerReady, mapW, mapH, scale, grid, activeEntity, cooldownMs: rotationCooldownMs, activeAoe } })
 
   // Escape clears active selection
   useEffect(() => {
@@ -332,6 +381,13 @@ export function StageMap({
       setDrawTick((n) => n + 1)
     }
 
+    function rotateEffect(effect: Effect, dir: number, playerReady: boolean) {
+      const updated: Effect = { ...effect, rotation: ((effect.rotation ?? 0) + dir * 90 + 360) % 360 }
+      useVttStore.getState().upsertEffect(updated)
+      if (playerReady) void emit(VTT_EVENTS.EFFECT_UPSERT, updated)
+      setDrawTick((n) => n + 1)
+    }
+
     function rotateAoe(aoe: AoeMarker, dir: number, playerReady: boolean) {
       if (aoe.shape === 'circle') return
       const onEdgeCenter = aoe.shape === 'triangle' && isEdgeCenterSnap(aoe.gridX, aoe.gridY)
@@ -347,12 +403,12 @@ export function StageMap({
 
     function onWheel(e: WheelEvent) {
       e.preventDefault()
-      const { playerReady, mapW, mapH, scale, grid, activeEntity, cooldownMs } = wheelRef.current
+      const { playerReady, mapW, mapH, scale, grid, activeEntity, cooldownMs, activeAoe: activeAoeCurrent } = wheelRef.current
       const now = Date.now()
       if (now - lastRotationRef.current < cooldownMs) return
       lastRotationRef.current = now
       const { cellSize, originX, originY } = grid
-      const { tokens, aoeMarkers } = useVttStore.getState()
+      const { tokens, aoeMarkers, effects } = useVttStore.getState()
       const dir = e.deltaY > 0 ? 1 : -1  // 1 = clockwise (scroll down)
 
       // ── Active entity has priority: rotate regardless of cursor position ──
@@ -360,11 +416,28 @@ export function StageMap({
         if (activeEntity.type === 'token') {
           const t = tokens.find((t) => t.id === activeEntity.id)
           if (t) rotateToken(t, dir, playerReady)
+        } else if (activeEntity.type === 'effect') {
+          const ef = effects.find((ef) => ef.id === activeEntity.id)
+          if (ef && ef.shape !== 'circle') rotateEffect(ef, dir, playerReady)
         } else if (activeEntity.type === 'aoe') {
           const a = aoeMarkers.find((a) => a.id === activeEntity.id)
           if (a) rotateAoe(a, dir, playerReady)
         }
-        // effects: no rotation
+        return
+      }
+
+      // ── AOE placement mode: scroll rotates the placement ghost ────────────
+      if (activeAoeCurrent && activeAoeCurrent.shape !== 'circle') {
+        const step = activeAoeCurrent.shape === 'triangle' ? 45 : 90
+        const newRot = ((aoePlacementRotationRef.current + dir * step) + 360) % 360
+        aoePlacementRotationRef.current = newRot
+        if (playerReady && lastAoeGhostPos.current) {
+          const { intX, intY } = lastAoeGhostPos.current
+          const ghostRotation = computeAoeRotation(activeAoeCurrent.shape, activeAoeCurrent.alignTo, intX, intY, newRot)
+          const payload: GhostAoePayload = { ...activeAoeCurrent, rotation: ghostRotation, intX, intY }
+          void emit(VTT_EVENTS.GHOST_AOE, payload)
+        }
+        setDrawTick((n) => n + 1)
         return
       }
 
@@ -379,6 +452,15 @@ export function StageMap({
         (t) => gx >= t.gridX && gx < t.gridX + t.size && gy >= t.gridY && gy < t.gridY + t.size,
       )
       if (token) { rotateToken(token, dir, playerReady); return }
+
+      const effect = effects.find((ef) => {
+        if (ef.shape === 'circle') {
+          const half = ef.size / 2
+          return Math.abs(gx - ef.gridX) < half && Math.abs(gy - ef.gridY) < half
+        }
+        return gx >= ef.gridX && gx < ef.gridX + ef.size && gy >= ef.gridY && gy < ef.gridY + ef.size
+      })
+      if (effect && effect.shape !== 'circle') { rotateEffect(effect, dir, playerReady); return }
 
       for (let i = aoeMarkers.length - 1; i >= 0; i--) {
         const aoe = aoeMarkers[i]
@@ -484,18 +566,26 @@ export function StageMap({
     for (const effect of effects) {
       const img = getImage(effect.src)
       const sizePx = effect.size * cellPreview
-      let ex: number, ey: number
+      let ex = 0, ey = 0
       if (effect.shape === 'circle') {
         ex = (originX + effect.gridX * cellSize) * scale - sizePx / 2
         ey = (originY + effect.gridY * cellSize) * scale - sizePx / 2
+        ctx.globalAlpha = effect.opacity
+        if (img) ctx.drawImage(img, ex, ey, sizePx, sizePx)
+        else { ctx.fillStyle = '#44aaff'; ctx.fillRect(ex, ey, sizePx, sizePx) }
+        ctx.globalAlpha = 1
       } else {
         ex = (originX + effect.gridX * cellSize) * scale
         ey = (originY + effect.gridY * cellSize) * scale
+        ctx.save()
+        ctx.translate(ex + sizePx / 2, ey + sizePx / 2)
+        ctx.rotate(((effect.rotation ?? 0) * Math.PI) / 180)
+        ctx.globalAlpha = effect.opacity
+        if (img) ctx.drawImage(img, -sizePx / 2, -sizePx / 2, sizePx, sizePx)
+        else { ctx.fillStyle = '#44aaff'; ctx.fillRect(-sizePx / 2, -sizePx / 2, sizePx, sizePx) }
+        ctx.globalAlpha = 1
+        ctx.restore()
       }
-      ctx.globalAlpha = effect.opacity
-      if (img) ctx.drawImage(img, ex, ey, sizePx, sizePx)
-      else { ctx.fillStyle = '#44aaff'; ctx.fillRect(ex, ey, sizePx, sizePx) }
-      ctx.globalAlpha = 1
       if (activeEntity?.id === effect.id && activeEntity?.type === 'effect') {
         ctx.strokeStyle = '#7c4bff'; ctx.lineWidth = 2.5
         ctx.setLineDash([5, 3]); ctx.strokeRect(ex + 1, ey + 1, sizePx - 2, sizePx - 2); ctx.setLineDash([])
@@ -650,7 +740,7 @@ export function StageMap({
     // AOE placement ghost
     if (activeAoe && aoeGhost) {
       const ghostRotation = computeAoeRotation(
-        activeAoe.shape, activeAoe.alignTo, aoeGhost.intX, aoeGhost.intY, activeAoe.rotation,
+        activeAoe.shape, activeAoe.alignTo, aoeGhost.intX, aoeGhost.intY, aoePlacementRotationRef.current,
       )
       renderAoeOnCanvas(ctx, { ...activeAoe, gridX: aoeGhost.intX, gridY: aoeGhost.intY, rotation: ghostRotation },
         cellSize, originX, originY, scale, 0.45)
@@ -741,7 +831,7 @@ export function StageMap({
 
   function placeAoe(intX: number, intY: number) {
     if (!activeAoe) return
-    const rotation = computeAoeRotation(activeAoe.shape, activeAoe.alignTo, intX, intY, activeAoe.rotation)
+    const rotation = computeAoeRotation(activeAoe.shape, activeAoe.alignTo, intX, intY, aoePlacementRotationRef.current)
     const aoe: AoeMarker = { ...activeAoe, id: crypto.randomUUID(), gridX: intX, gridY: intY, rotation }
     useVttStore.getState().upsertAoeMarker(aoe); if (playerReady) void emit(VTT_EVENTS.AOE_UPSERT, aoe)
   }
@@ -815,7 +905,7 @@ export function StageMap({
         const last = lastAoeGhostPos.current
         if (!last || last.intX !== intX || last.intY !== intY) {
           lastAoeGhostPos.current = { intX, intY }
-          const ghostRotation = computeAoeRotation(activeAoe.shape, activeAoe.alignTo, intX, intY, activeAoe.rotation)
+          const ghostRotation = computeAoeRotation(activeAoe.shape, activeAoe.alignTo, intX, intY, aoePlacementRotationRef.current)
           const payload: GhostAoePayload = { ...activeAoe, rotation: ghostRotation, intX, intY }
           void emit(VTT_EVENTS.GHOST_AOE, payload)
         }
@@ -928,13 +1018,18 @@ export function StageMap({
       const item: ContextItem = hit.type === 'token'
         ? { type: 'token', data: hit.entity as Token }
         : { type: 'effect', data: hit.entity as Effect }
+      setMapContextMenu(null)
       setContextMenu({ item, x: e.clientX, y: e.clientY }); return
     }
     const aoe = findAoeAt(fullX, fullY)
     if (aoe) {
       setActiveEntity({ id: aoe.id, type: 'aoe' })
-      setContextMenu({ item: { type: 'aoe', data: aoe }, x: e.clientX, y: e.clientY })
+      setMapContextMenu(null)
+      setContextMenu({ item: { type: 'aoe', data: aoe }, x: e.clientX, y: e.clientY }); return
     }
+    // Empty space — show map-level actions
+    setContextMenu(null)
+    setMapContextMenu({ x: e.clientX, y: e.clientY })
   }
 
   // ── Context menu handlers ─────────────────────────────────────────────────
@@ -965,9 +1060,38 @@ export function StageMap({
   }
 
   function handleRotate(id: string, dir: 1 | -1) {
-    const t = tokens.find((t) => t.id === id); if (!t) return
-    const u: Token = { ...t, rotation: ((t.rotation ?? 0) + dir * 90 + 360) % 360 }
-    useVttStore.getState().upsertToken(u); if (playerReady) void emit(VTT_EVENTS.TOKEN_UPSERT, u)
+    const t = tokens.find((t) => t.id === id)
+    if (t) {
+      const u: Token = { ...t, rotation: ((t.rotation ?? 0) + dir * 90 + 360) % 360 }
+      useVttStore.getState().upsertToken(u); if (playerReady) void emit(VTT_EVENTS.TOKEN_UPSERT, u)
+      return
+    }
+    const ef = effects.find((e) => e.id === id)
+    if (ef) {
+      const u: Effect = { ...ef, rotation: ((ef.rotation ?? 0) + dir * 90 + 360) % 360 }
+      useVttStore.getState().upsertEffect(u); if (playerReady) void emit(VTT_EVENTS.EFFECT_UPSERT, u)
+    }
+  }
+
+  function handleRemoveAllTokens() {
+    const ts = useVttStore.getState().tokens
+    if (playerReady) ts.forEach((t) => void emit(VTT_EVENTS.TOKEN_REMOVE, { id: t.id }))
+    useVttStore.setState({ tokens: [] })
+    setActiveEntity((prev) => (prev?.type === 'token' ? null : prev))
+  }
+
+  function handleRemoveAllEffects() {
+    const effs = useVttStore.getState().effects
+    if (playerReady) effs.forEach((e) => void emit(VTT_EVENTS.EFFECT_REMOVE, { id: e.id }))
+    useVttStore.setState({ effects: [] })
+    setActiveEntity((prev) => (prev?.type === 'effect' ? null : prev))
+  }
+
+  function handleRemoveAllAoe() {
+    const aoes = useVttStore.getState().aoeMarkers
+    if (playerReady) aoes.forEach((a) => void emit(VTT_EVENTS.AOE_REMOVE, { id: a.id }))
+    useVttStore.setState({ aoeMarkers: [] })
+    setActiveEntity((prev) => (prev?.type === 'aoe' ? null : prev))
   }
 
   function handleRemove(id: string, type: 'token' | 'effect') {
@@ -1046,8 +1170,8 @@ export function StageMap({
         onContextMenu={handleContextMenu}
         title={
           activeDef ? `Placing: ${activeDef.name} — click to place, Esc to cancel`
-          : activeAoe ? 'Click to place AOE marker — Esc to cancel'
-          : 'Click token to select, then click map to place · Scroll over token/AOE to rotate'
+          : activeAoe ? 'Click to place AOE marker · Scroll to rotate · Esc to cancel'
+          : 'Click to select · Scroll over token/effect/AOE to rotate · Right-click for options'
         }
       />
       {contextMenu && (
@@ -1063,6 +1187,15 @@ export function StageMap({
           onAoeRemove={handleAoeRemove}
           onRemove={handleRemove}
           onClose={() => setContextMenu(null)}
+        />
+      )}
+      {mapContextMenu && (
+        <MapContextMenu
+          x={mapContextMenu.x} y={mapContextMenu.y}
+          onRemoveAllTokens={handleRemoveAllTokens}
+          onRemoveAllEffects={handleRemoveAllEffects}
+          onRemoveAllAoe={handleRemoveAllAoe}
+          onClose={() => setMapContextMenu(null)}
         />
       )}
     </div>
