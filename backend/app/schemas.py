@@ -525,6 +525,7 @@ class InviteStatusOut(BaseModel):
     mode: str
     email: str
     campaign_name: Optional[str]
+    campaign_id: Optional[str]
 
 
 class InviteRegisterRequest(BaseModel):

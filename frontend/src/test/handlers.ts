@@ -85,6 +85,14 @@ export const handlers = [
     return HttpResponse.json({ id: 'u1', username: 'testuser', email: body.new_email.trim().toLowerCase(), is_admin: true })
   }),
 
+  // Invites
+  http.get(`${BASE}/api/invites/:id`, () =>
+    HttpResponse.json({ mode: 'register', email: 'invited@example.com', campaign_name: null, campaign_id: null }),
+  ),
+  http.post(`${BASE}/api/invites/:id/register`, () =>
+    HttpResponse.json({ access_token: 'fake-jwt-token', token_type: 'bearer' }, { status: 201 }),
+  ),
+
   // Sessions list
   http.get(`${BASE}/sessions`, () => {
     return HttpResponse.json([fixtureSession])

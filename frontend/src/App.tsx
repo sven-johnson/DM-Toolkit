@@ -15,6 +15,7 @@ import { WikiListPage } from './pages/WikiListPage'
 import { WikiArticlePage } from './pages/WikiArticlePage'
 import { WikiEditorPage } from './pages/WikiEditorPage'
 import { UserSettingsPage } from './pages/UserSettingsPage'
+import { InvitePage } from './pages/InvitePage'
 import { DownloadPage } from './pages/DownloadPage'
 import { MonsterFactoryPage } from './pages/MonsterFactory'
 import { LocationsPage } from './pages/LocationsPage'
@@ -48,13 +49,14 @@ function RequireGameMaster({ children }: { children: React.ReactNode }) {
 
 function AppLayout() {
   const location = useLocation()
-  const isLoginPage = location.pathname === '/login'
+  const hideNav = location.pathname === '/login' || location.pathname === '/invite'
 
   return (
     <>
-      {!isLoginPage && <Nav />}
+      {!hideNav && <Nav />}
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/invite" element={<InvitePage />} />
         <Route
           path="/"
           element={

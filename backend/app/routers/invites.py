@@ -97,7 +97,7 @@ def get_invite_status(invite_id: str, db: DBSession = Depends(get_db)) -> Invite
     if mode == "dead":
         raise _INVALID_INVITE
     campaign_name = invite.campaign.name if invite.campaign_id else None
-    return InviteStatusOut(mode=mode, email=invite.email, campaign_name=campaign_name)
+    return InviteStatusOut(mode=mode, email=invite.email, campaign_name=campaign_name, campaign_id=invite.campaign_id)
 
 
 @router.post("/{invite_id}/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)

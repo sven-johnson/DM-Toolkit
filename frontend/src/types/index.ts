@@ -182,6 +182,21 @@ export interface TokenResponse {
   token_type: string
 }
 
+export interface Invite {
+  id: string
+  email: string
+  campaign_id: string | null
+  role: 'owner' | 'game_master' | 'player' | null
+  expires_at: string
+}
+
+export interface InviteStatus {
+  mode: 'register' | 'join'
+  email: string
+  campaign_name: string | null
+  campaign_id: string | null
+}
+
 export interface WikiArticle {
   id: string
   campaign_id: string

@@ -87,7 +87,12 @@ def test_get_invite_platform_mode_register(client: TestClient, auth_headers: dic
     resp = client.get(f"/api/invites/{invite['id']}")
     assert resp.status_code == 200
     body = resp.json()
-    assert body == {"mode": "register", "email": "newgm@example.com", "campaign_name": None}
+    assert body == {
+        "mode": "register",
+        "email": "newgm@example.com",
+        "campaign_name": None,
+        "campaign_id": None,
+    }
 
 
 def test_get_invite_campaign_new_email_mode_register_with_campaign_name(
@@ -100,6 +105,7 @@ def test_get_invite_campaign_new_email_mode_register_with_campaign_name(
     assert body["mode"] == "register"
     assert body["email"] == "newplayer@example.com"
     assert body["campaign_name"] == "Test Campaign"
+    assert body["campaign_id"] == campaign_id
 
 
 def test_get_invite_campaign_existing_email_mode_join(client: TestClient, auth_headers: dict, db, campaign_id: str):
