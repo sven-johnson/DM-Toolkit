@@ -9,7 +9,14 @@ from ..auth import create_access_token, get_current_user, ph, require_campaign_r
 from ..database import get_db
 from ..invites_service import InviteAlreadyUsed, create_invite, get_invite_mode, get_valid_invite, mark_accepted
 from ..models import Campaign, CampaignMember, Invite, User
-from ..schemas import InviteCreate, InviteOut, InviteRegisterRequest, InviteStatusOut, TokenResponse
+from ..schemas import (
+    InviteAcceptResponse,
+    InviteCreate,
+    InviteOut,
+    InviteRegisterRequest,
+    InviteStatusOut,
+    TokenResponse,
+)
 from ..utils import normalize_email
 
 router = APIRouter()
@@ -153,3 +160,40 @@ def register_with_invite(
     db.commit()
 
     return TokenResponse(access_token=create_access_token({"sub": new_user.username}))
+
+
+@router.post("/{invite_id}/accept", response_model=InviteAcceptResponse)
+def accept_invite(
+    invite_id: str,
+    db: DBSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> InviteAcceptResponse:
+    invite = get_valid_invite(db, invite_id)
+    if invite is None or invite.campaign_id is None or get_invite_mode(db, invite) != "join":
+        raise _INVALID_INVITE
+
+    if invite.email != user.email:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This invitation was sent to a different account.",
+        )
+
+    existing_membership = (
+        db.query(CampaignMember)
+        .filter(CampaignMember.user_id == user.id, CampaignMember.campaign_id == invite.campaign_id)
+        .first()
+    )
+    if not existing_membership:
+        db.add(
+            CampaignMember(
+                id=str(uuid.uuid4()),
+                user_id=user.id,
+                campaign_id=invite.campaign_id,
+                role=invite.role,
+            )
+        )
+
+    mark_accepted(db, invite, user.id)
+    db.commit()
+
+    return InviteAcceptResponse(campaign_id=invite.campaign_id)
