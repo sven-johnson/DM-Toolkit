@@ -92,6 +92,7 @@ export const handlers = [
   http.post(`${BASE}/api/invites/:id/register`, () =>
     HttpResponse.json({ access_token: 'fake-jwt-token', token_type: 'bearer' }, { status: 201 }),
   ),
+  http.post(`${BASE}/api/invites/:id/accept`, () => HttpResponse.json({ campaign_id: 'camp-1' })),
 
   // Sessions list
   http.get(`${BASE}/sessions`, () => {

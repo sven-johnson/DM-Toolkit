@@ -1,7 +1,14 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import apiClient from "../api/client";
 import type { TokenResponse } from "../types";
+
+// Only ever redirect to a same-app relative path — never follow a
+// protocol-relative ("//host/...") or absolute URL from a query param.
+function safeReturnTo(value: string | null): string {
+  if (value && value.startsWith("/") && !value.startsWith("//")) return value;
+  return "/";
+}
 
 export function LoginPage() {
   const [username, setUsername] = useState("");
@@ -9,6 +16,7 @@ export function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [params] = useSearchParams();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -20,7 +28,7 @@ export function LoginPage() {
         password,
       });
       localStorage.setItem("auth_token", data.access_token);
-      navigate("/");
+      navigate(safeReturnTo(params.get("returnTo")));
     } catch {
       setError("Invalid username or password.");
     } finally {

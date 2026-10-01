@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { http, HttpResponse } from 'msw'
@@ -234,6 +234,158 @@ test('404 on submit switches to the beta message', async () => {
   await user.click(screen.getByRole('button', { name: 'Create account' }))
 
   expect(await screen.findByText(/closed beta/i)).toBeInTheDocument()
+})
+
+// ---------------------------------------------------------------------------
+// Join mode
+// ---------------------------------------------------------------------------
+
+function mockJoinInvite(campaignName = 'Dragon Heist') {
+  server.use(
+    http.get(`${BASE}/api/invites/:id`, () =>
+      HttpResponse.json({ mode: 'join', email: 'existing@example.com', campaign_name: campaignName, campaign_id: 'camp-1' }),
+    ),
+  )
+}
+
+test('join mode while logged out redirects to login with the correct return URL', async () => {
+  mockJoinInvite()
+  renderInvitePage('?id=invite-1')
+  await waitFor(() =>
+    expect(mockNavigate).toHaveBeenCalledWith('/login?returnTo=%2Finvite%3Fid%3Dinvite-1', { replace: true }),
+  )
+})
+
+test('join mode while logged in shows the campaign name and both buttons', async () => {
+  localStorage.setItem('auth_token', 'existing-token')
+  mockJoinInvite()
+  renderInvitePage()
+  expect(await screen.findByText(/Dragon Heist/)).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Accept' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Ignore' })).toBeInTheDocument()
+})
+
+test('accept calls the API and navigates on success', async () => {
+  localStorage.setItem('auth_token', 'existing-token')
+  mockJoinInvite()
+  let called = false
+  server.use(
+    http.post(`${BASE}/api/invites/:id/accept`, () => {
+      called = true
+      return HttpResponse.json({ campaign_id: 'camp-1' })
+    }),
+  )
+  renderInvitePage()
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Accept' }))
+
+  await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/sessions'))
+  expect(called).toBe(true)
+})
+
+test('accept 403 shows the wrong-account message', async () => {
+  localStorage.setItem('auth_token', 'existing-token')
+  mockJoinInvite()
+  server.use(
+    http.post(`${BASE}/api/invites/:id/accept`, () =>
+      HttpResponse.json({ detail: 'This invitation was sent to a different account.' }, { status: 403 }),
+    ),
+  )
+  renderInvitePage()
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Accept' }))
+
+  expect(await screen.findByText('This invitation was sent to a different account.')).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'Go home' }))
+  expect(mockNavigate).toHaveBeenCalledWith('/')
+})
+
+test('accept 404 shows the beta message', async () => {
+  localStorage.setItem('auth_token', 'existing-token')
+  mockJoinInvite()
+  server.use(
+    http.post(`${BASE}/api/invites/:id/accept`, () => HttpResponse.json({ detail: 'invalid_invite' }, { status: 404 })),
+  )
+  renderInvitePage()
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Accept' }))
+
+  expect(await screen.findByText(/closed beta/i)).toBeInTheDocument()
+})
+
+test('accept button is disabled while the request is in flight', async () => {
+  localStorage.setItem('auth_token', 'existing-token')
+  mockJoinInvite()
+  server.use(
+    http.post(`${BASE}/api/invites/:id/accept`, async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      return HttpResponse.json({ campaign_id: 'camp-1' })
+    }),
+  )
+  renderInvitePage()
+  const user = userEvent.setup()
+  const button = await screen.findByRole('button', { name: 'Accept' })
+  await user.click(button)
+  expect(screen.getByRole('button', { name: 'Accepting…' })).toBeDisabled()
+})
+
+test('ignore navigates home without calling the accept API', async () => {
+  localStorage.setItem('auth_token', 'existing-token')
+  mockJoinInvite()
+  let called = false
+  server.use(
+    http.post(`${BASE}/api/invites/:id/accept`, () => {
+      called = true
+      return HttpResponse.json({ campaign_id: 'camp-1' })
+    }),
+  )
+  renderInvitePage()
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Ignore' }))
+
+  expect(mockNavigate).toHaveBeenCalledWith('/')
+  expect(called).toBe(false)
+})
+
+test('submitting the form twice in rapid succession only calls the API once', async () => {
+  let callCount = 0
+  server.use(
+    http.get(`${BASE}/api/invites/:id`, () =>
+      HttpResponse.json({ mode: 'register', email: 'x@example.com', campaign_name: null, campaign_id: null }),
+    ),
+    http.post(`${BASE}/api/invites/:id/register`, async () => {
+      callCount += 1
+      return HttpResponse.json({ access_token: 'tok', token_type: 'bearer' }, { status: 201 })
+    }),
+  )
+  renderInvitePage()
+  await screen.findByLabelText('Username')
+  await fillRegisterForm({ password: 'password123', confirm: 'password123' })
+
+  const form = screen.getByRole('button', { name: 'Create account' }).closest('form')!
+  // Bypasses the button's disabled attribute (unlike a real click), exercising
+  // the submittingRef guard directly rather than relying on button disablement.
+  fireEvent.submit(form)
+  fireEvent.submit(form)
+
+  await waitFor(() => expect(mockNavigate).toHaveBeenCalled())
+  expect(callCount).toBe(1)
+})
+
+test('shows a generic error message when the server response has no detail', async () => {
+  server.use(
+    http.get(`${BASE}/api/invites/:id`, () =>
+      HttpResponse.json({ mode: 'register', email: 'x@example.com', campaign_name: null, campaign_id: null }),
+    ),
+    http.post(`${BASE}/api/invites/:id/register`, () => new HttpResponse(null, { status: 500 })),
+  )
+  renderInvitePage()
+  await screen.findByLabelText('Username')
+  const user = await fillRegisterForm({ password: 'password123', confirm: 'password123' })
+  await user.click(screen.getByRole('button', { name: 'Create account' }))
+
+  expect(await screen.findByText('Failed to create account.')).toBeInTheDocument()
 })
 
 test('double-click submits only once', async () => {

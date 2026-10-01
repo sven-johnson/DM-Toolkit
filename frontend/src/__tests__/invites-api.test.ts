@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import { getInvite, registerWithInvite } from '../api/invites'
+import { acceptInvite, getInvite, registerWithInvite } from '../api/invites'
 import { server } from '../test/server'
 import { BASE } from '../test/handlers'
 
@@ -49,6 +49,29 @@ test('registerWithInvite calls POST /api/invites/:id/register with the correct b
     confirm_password: 'password123',
   })
   expect(result).toEqual({ access_token: 'tok', token_type: 'bearer' })
+})
+
+test('acceptInvite calls POST /api/invites/:id/accept and returns the body', async () => {
+  let seenMethod = ''
+  server.use(
+    http.post(`${BASE}/api/invites/:id/accept`, ({ request, params }) => {
+      seenMethod = request.method
+      expect(params.id).toBe('abc-123')
+      return HttpResponse.json({ campaign_id: 'camp-1' })
+    }),
+  )
+  const result = await acceptInvite('abc-123')
+  expect(seenMethod).toBe('POST')
+  expect(result).toEqual({ campaign_id: 'camp-1' })
+})
+
+test('acceptInvite propagates a 403 error for the caller to map', async () => {
+  server.use(
+    http.post(`${BASE}/api/invites/:id/accept`, () =>
+      HttpResponse.json({ detail: 'This invitation was sent to a different account.' }, { status: 403 }),
+    ),
+  )
+  await expect(acceptInvite('abc-123')).rejects.toMatchObject({ response: { status: 403 } })
 })
 
 test('registerWithInvite propagates a 409 error with the server detail for the caller to map', async () => {

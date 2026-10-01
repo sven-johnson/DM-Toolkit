@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { getInvite, registerWithInvite } from '../api/invites'
+import { acceptInvite, getInvite, registerWithInvite } from '../api/invites'
 import { useSetCampaignId, useSetCampaignRole } from '../context/CampaignContext'
 import type { InviteStatus } from '../types'
 
@@ -142,8 +142,79 @@ function RegisterForm({ id, invite }: { id: string; invite: InviteStatus }) {
   )
 }
 
+function JoinPrompt({ id, invite }: { id: string; invite: InviteStatus }) {
+  const navigate = useNavigate()
+  const setCampaignId = useSetCampaignId()
+  const setCampaignRole = useSetCampaignRole()
+
+  const [submitting, setSubmitting] = useState(false)
+  const [wrongAccount, setWrongAccount] = useState(false)
+  const [beta, setBeta] = useState(false)
+
+  async function handleAccept() {
+    // No extra re-entry guard needed: this is only ever invoked from the
+    // button below, which disables itself via `submitting` — unlike the
+    // register form, there's no alternate (e.g. Enter-key/form-submit) path
+    // that could bypass that.
+    setSubmitting(true)
+    try {
+      const { campaign_id } = await acceptInvite(id)
+      setCampaignId(campaign_id)
+      setCampaignRole('player')
+      navigate('/sessions')
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 403) {
+        setWrongAccount(true)
+      } else {
+        setBeta(true)
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  function handleIgnore() {
+    navigate('/')
+  }
+
+  if (beta) return <BetaMessage />
+
+  if (wrongAccount) {
+    return (
+      <div className="login-page">
+        <div className="login-form">
+          <h1 className="login-title">DM Toolkit</h1>
+          <p className="login-subtitle">This invitation was sent to a different account.</p>
+          <button className="btn-primary" type="button" onClick={() => navigate('/')}>
+            Go home
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="login-page">
+      <div className="login-form">
+        <h1 className="login-title">DM Toolkit</h1>
+        <p className="login-subtitle">
+          You have been invited to join <strong>{invite.campaign_name}</strong>
+        </p>
+        <div className="modal-actions">
+          <button className="btn-ghost" type="button" onClick={handleIgnore}>Ignore</button>
+          <button className="btn-primary" type="button" onClick={handleAccept} disabled={submitting}>
+            {submitting ? 'Accepting…' : 'Accept'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function InvitePage() {
   const [params] = useSearchParams()
+  const navigate = useNavigate()
   const id = params.get('id')
 
   const [status, setStatus] = useState<'loading' | 'beta' | 'ready'>(id ? 'loading' : 'beta')
@@ -162,6 +233,13 @@ export function InvitePage() {
       })
       .catch(() => setStatus('beta'))
   }, [id])
+
+  useEffect(() => {
+    if (status === 'ready' && invite?.mode === 'join' && !localStorage.getItem('auth_token')) {
+      const returnTo = encodeURIComponent(`/invite?id=${id}`)
+      navigate(`/login?returnTo=${returnTo}`, { replace: true })
+    }
+  }, [status, invite, id, navigate])
 
   if (status === 'loading') {
     return (
@@ -182,13 +260,10 @@ export function InvitePage() {
     return <RegisterForm id={id} invite={invite} />
   }
 
-  // mode === 'join' — handled in Step 7.
-  return (
-    <div className="login-page">
-      <div className="login-form">
-        <h1 className="login-title">DM Toolkit</h1>
-        <p className="login-subtitle">Join flow coming soon.</p>
-      </div>
-    </div>
-  )
+  if (!localStorage.getItem('auth_token')) {
+    // Redirecting via the effect above — render nothing in the meantime.
+    return null
+  }
+
+  return <JoinPrompt id={id} invite={invite} />
 }

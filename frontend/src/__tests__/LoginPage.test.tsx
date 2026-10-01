@@ -61,6 +61,36 @@ test("stores token in localStorage and navigates to / on success", async () => {
   });
 });
 
+test("honors a returnTo query param on success", async () => {
+  const user = userEvent.setup();
+  render(
+    <MemoryRouter initialEntries={["/login?returnTo=%2Finvite%3Fid%3Dabc"]}>
+      <LoginPage />
+    </MemoryRouter>,
+  );
+
+  await user.type(screen.getByPlaceholderText("Username"), "admin");
+  await user.type(screen.getByPlaceholderText("Password"), "changeme");
+  await user.click(screen.getByRole("button", { name: /log in/i }));
+
+  await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith("/invite?id=abc"));
+});
+
+test("ignores a returnTo pointing off-app and falls back to /", async () => {
+  const user = userEvent.setup();
+  render(
+    <MemoryRouter initialEntries={["/login?returnTo=%2F%2Fevil.example.com"]}>
+      <LoginPage />
+    </MemoryRouter>,
+  );
+
+  await user.type(screen.getByPlaceholderText("Username"), "admin");
+  await user.type(screen.getByPlaceholderText("Password"), "changeme");
+  await user.click(screen.getByRole("button", { name: /log in/i }));
+
+  await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith("/"));
+});
+
 test("does not show an error message on successful login", async () => {
   const user = userEvent.setup();
   renderLoginPage();
