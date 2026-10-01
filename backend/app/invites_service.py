@@ -54,6 +54,21 @@ def get_valid_invite(db: DBSession, invite_id: str) -> Invite | None:
     return invite
 
 
+def get_invite_mode(db: DBSession, invite: Invite) -> str:
+    """Assumes `invite` already passed get_valid_invite.
+
+    Returns "join" (email has an account and this is a campaign invite),
+    "dead" (platform invite whose email has since been registered — treat
+    as invalid by the caller), or "register".
+    """
+    existing_user = db.query(User).filter(User.email == invite.email).first()
+    if existing_user and invite.campaign_id:
+        return "join"
+    if existing_user:
+        return "dead"
+    return "register"
+
+
 def mark_accepted(db: DBSession, invite: Invite, user_id: str) -> None:
     result = db.execute(
         Invite.__table__.update()
