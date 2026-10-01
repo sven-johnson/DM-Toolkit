@@ -1,8 +1,16 @@
 import apiClient from './client'
-import type { InviteStatus, TokenResponse } from '../types'
+import type { Invite, InviteStatus, TokenResponse } from '../types'
 
 export interface InviteAcceptResponse {
   campaign_id: string
+}
+
+export async function createInvite(email: string, campaignId?: string): Promise<Invite> {
+  const { data } = await apiClient.post<Invite>('/api/invites', {
+    email,
+    campaign_id: campaignId ?? null,
+  })
+  return data
 }
 
 export async function getInvite(id: string): Promise<InviteStatus> {

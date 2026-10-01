@@ -86,6 +86,19 @@ export const handlers = [
   }),
 
   // Invites
+  http.post(`${BASE}/api/invites`, async ({ request }) => {
+    const body = (await request.json()) as { email: string; campaign_id: string | null }
+    return HttpResponse.json(
+      {
+        id: 'invite-generated',
+        email: body.email,
+        campaign_id: body.campaign_id,
+        role: body.campaign_id ? 'player' : null,
+        expires_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      { status: 201 },
+    )
+  }),
   http.get(`${BASE}/api/invites/:id`, () =>
     HttpResponse.json({ mode: 'register', email: 'invited@example.com', campaign_name: null, campaign_id: null }),
   ),

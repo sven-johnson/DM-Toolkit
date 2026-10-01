@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import apiClient from '../api/client'
 import { useTheme } from '../context/ThemeContext'
+import { InviteCreator } from '../components/InviteCreator'
 
 // ---------------------------------------------------------------------------
 // JSON schema download helper
@@ -292,6 +293,7 @@ export function UserSettingsPage() {
   const { theme, setTheme } = useTheme()
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
+  const [isAdmin, setIsAdmin] = useState(false)
   const [loadingUser, setLoadingUser] = useState(true)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showEditEmailModal, setShowEditEmailModal] = useState(false)
@@ -305,10 +307,11 @@ export function UserSettingsPage() {
   const [savingPassword, setSavingPassword] = useState(false)
 
   useEffect(() => {
-    apiClient.get<{ username: string; email: string }>('/auth/me')
+    apiClient.get<{ username: string; email: string; is_admin: boolean }>('/auth/me')
       .then(({ data }) => {
         setUsername(data.username)
         setEmail(data.email)
+        setIsAdmin(data.is_admin)
       })
       .finally(() => setLoadingUser(false))
   }, [])
@@ -392,6 +395,13 @@ export function UserSettingsPage() {
           </button>
         </div>
       </div>
+
+      {isAdmin && (
+        <div className="settings-section">
+          <h2 className="settings-section-title">Invite a Game Master</h2>
+          <InviteCreator />
+        </div>
+      )}
 
       <div className="settings-section">
         <h2 className="settings-section-title">Change Password</h2>

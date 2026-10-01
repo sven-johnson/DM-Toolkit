@@ -40,6 +40,27 @@ test('shows placeholder email as "Not set" with an "Add email" prompt', async ()
 })
 
 // ---------------------------------------------------------------------------
+// Invite a Game Master section (admin only)
+// ---------------------------------------------------------------------------
+
+test('shows "Invite a Game Master" section for an admin', async () => {
+  renderPage()
+  await waitFor(() => expect(screen.getByText('testuser')).toBeInTheDocument())
+  expect(screen.getByText('Invite a Game Master')).toBeInTheDocument()
+})
+
+test('hides "Invite a Game Master" section for a non-admin', async () => {
+  server.use(
+    http.get(`${BASE}/auth/me`, () =>
+      HttpResponse.json({ id: 'u1', username: 'testuser', email: 'testuser@example.com', is_admin: false }),
+    ),
+  )
+  renderPage()
+  await waitFor(() => expect(screen.getByText('testuser')).toBeInTheDocument())
+  expect(screen.queryByText('Invite a Game Master')).not.toBeInTheDocument()
+})
+
+// ---------------------------------------------------------------------------
 // Username change (mirrors the email flow below)
 // ---------------------------------------------------------------------------
 

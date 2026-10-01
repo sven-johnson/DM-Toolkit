@@ -9,6 +9,7 @@ import {
   useUpdateCampaign,
 } from '../hooks/useCampaigns'
 import apiClient from '../api/client'
+import { InviteCreator } from '../components/InviteCreator'
 import type { Campaign } from '../types'
 
 const ROLE_LABELS: Record<string, string> = {
@@ -54,6 +55,13 @@ export function CampaignsPage() {
     return isAdmin || campaign.my_role === 'owner'
   }
 
+  // Broader than canManageMembers: game_masters can invite players (Step 3's
+  // create-invite endpoint allows it) even though they can't otherwise see or
+  // edit the member list (GET/PUT/DELETE .../members stay owner/admin only).
+  function canInvitePlayers(campaign: Campaign): boolean {
+    return isAdmin || campaign.my_role === 'owner' || campaign.my_role === 'game_master'
+  }
+
   function handleSelect(campaign: Campaign) {
     setCampaignId(campaign.id)
     setCampaignRole(campaign.my_role)
@@ -86,11 +94,11 @@ export function CampaignsPage() {
 
   async function openMemberManager(campaign: Campaign) {
     setManagingCampaign(campaign)
-    const [membersRes] = await Promise.all([
-      apiClient.get<{ user_id: string; username: string; role: string }[]>(
-        `/campaigns/${campaign.id}/members`,
-      ),
-    ])
+    setMembers([])
+    if (!canManageMembers(campaign)) return
+    const membersRes = await apiClient.get<{ user_id: string; username: string; role: string }[]>(
+      `/campaigns/${campaign.id}/members`,
+    )
     setMembers(membersRes.data)
     if (isAdmin) {
       const usersRes = await apiClient.get<{ id: string; username: string }[]>('/admin/users')
@@ -205,7 +213,7 @@ export function CampaignsPage() {
                   ✎
                 </button>
               )}
-              {canManageMembers(campaign) && (
+              {canInvitePlayers(campaign) && (
                 <button
                   className="btn-icon"
                   onClick={() => openMemberManager(campaign)}
@@ -243,79 +251,90 @@ export function CampaignsPage() {
               <button className="btn-icon" onClick={() => setManagingCampaign(null)}>✕</button>
             </div>
 
-            <div style={{ marginBottom: '1rem' }}>
-              {members.length === 0 ? (
-                <p className="empty-state" style={{ margin: '0.5rem 0' }}>No members yet.</p>
-              ) : (
-                members.map((m) => (
-                  <div key={m.user_id} className="member-row">
-                    <span className="member-username">{m.username}</span>
+            {canManageMembers(managingCampaign) && (
+              <>
+                <div style={{ marginBottom: '1rem' }}>
+                  {members.length === 0 ? (
+                    <p className="empty-state" style={{ margin: '0.5rem 0' }}>No members yet.</p>
+                  ) : (
+                    members.map((m) => (
+                      <div key={m.user_id} className="member-row">
+                        <span className="member-username">{m.username}</span>
+                        <select
+                          className="input"
+                          style={{ width: 130, fontSize: '0.8rem', padding: '0.15rem 0.3rem' }}
+                          value={m.role}
+                          onChange={(e) => handleChangeMemberRole(m.user_id, e.target.value)}
+                        >
+                          <option value="player">Player</option>
+                          <option value="game_master">Game Master</option>
+                          <option value="owner">Owner</option>
+                        </select>
+                        <button
+                          className="btn-icon btn-danger"
+                          style={{ fontSize: '0.75rem' }}
+                          onClick={() => handleRemoveMember(m.user_id)}
+                          title="Remove member"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <form onSubmit={handleAddMember} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {isAdmin && allUsers.length > 0 ? (
                     <select
                       className="input"
-                      style={{ width: 130, fontSize: '0.8rem', padding: '0.15rem 0.3rem' }}
-                      value={m.role}
-                      onChange={(e) => handleChangeMemberRole(m.user_id, e.target.value)}
+                      style={{ flex: 1 }}
+                      value={addUserId}
+                      onChange={(e) => setAddUserId(e.target.value)}
                     >
-                      <option value="player">Player</option>
-                      <option value="game_master">Game Master</option>
-                      <option value="owner">Owner</option>
+                      <option value="">Select user…</option>
+                      {allUsers
+                        .filter((u) => !members.some((m) => m.user_id === u.id))
+                        .map((u) => (
+                          <option key={u.id} value={u.id}>{u.username}</option>
+                        ))}
                     </select>
-                    <button
-                      className="btn-icon btn-danger"
-                      style={{ fontSize: '0.75rem' }}
-                      onClick={() => handleRemoveMember(m.user_id)}
-                      title="Remove member"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
+                  ) : (
+                    <input
+                      className="input"
+                      style={{ flex: 1 }}
+                      placeholder="User ID"
+                      value={addUserId}
+                      onChange={(e) => setAddUserId(e.target.value)}
+                    />
+                  )}
+                  <select
+                    className="input"
+                    style={{ width: 130 }}
+                    value={addRole}
+                    onChange={(e) => setAddRole(e.target.value)}
+                  >
+                    <option value="player">Player</option>
+                    <option value="game_master">Game Master</option>
+                    <option value="owner">Owner</option>
+                  </select>
+                  <button
+                    className="btn-primary"
+                    type="submit"
+                    disabled={!addUserId || memberSaving}
+                    style={{ fontSize: '0.85rem' }}
+                  >
+                    {memberSaving ? 'Adding…' : 'Add'}
+                  </button>
+                </form>
+              </>
+            )}
 
-            <form onSubmit={handleAddMember} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              {isAdmin && allUsers.length > 0 ? (
-                <select
-                  className="input"
-                  style={{ flex: 1 }}
-                  value={addUserId}
-                  onChange={(e) => setAddUserId(e.target.value)}
-                >
-                  <option value="">Select user…</option>
-                  {allUsers
-                    .filter((u) => !members.some((m) => m.user_id === u.id))
-                    .map((u) => (
-                      <option key={u.id} value={u.id}>{u.username}</option>
-                    ))}
-                </select>
-              ) : (
-                <input
-                  className="input"
-                  style={{ flex: 1 }}
-                  placeholder="User ID"
-                  value={addUserId}
-                  onChange={(e) => setAddUserId(e.target.value)}
-                />
-              )}
-              <select
-                className="input"
-                style={{ width: 130 }}
-                value={addRole}
-                onChange={(e) => setAddRole(e.target.value)}
-              >
-                <option value="player">Player</option>
-                <option value="game_master">Game Master</option>
-                <option value="owner">Owner</option>
-              </select>
-              <button
-                className="btn-primary"
-                type="submit"
-                disabled={!addUserId || memberSaving}
-                style={{ fontSize: '0.85rem' }}
-              >
-                {memberSaving ? 'Adding…' : 'Add'}
-              </button>
-            </form>
+            {canInvitePlayers(managingCampaign) && (
+              <div style={{ marginTop: '1.25rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+                <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.9rem' }}>Invite a Player</h3>
+                <InviteCreator campaignId={managingCampaign.id} />
+              </div>
+            )}
           </div>
         </div>
       )}
