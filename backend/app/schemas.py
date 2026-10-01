@@ -4,7 +4,7 @@ from typing import Optional
 
 from typing import Any
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, EmailStr, model_validator
 
 
 # ---------------------------------------------------------------------------
@@ -532,12 +532,18 @@ class TokenResponse(BaseModel):
 class MeResponse(BaseModel):
     id: str
     username: str
+    email: str
     is_admin: bool
 
 
 class UpdateUsernameRequest(BaseModel):
     current_password: str
     new_username: str
+
+
+class UpdateEmailRequest(BaseModel):
+    current_password: str
+    new_email: EmailStr
 
 
 class UpdatePasswordRequest(BaseModel):

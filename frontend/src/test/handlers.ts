@@ -66,6 +66,25 @@ export const handlers = [
     return HttpResponse.json({ detail: 'Invalid credentials' }, { status: 401 })
   }),
 
+  // Current user
+  http.get(`${BASE}/auth/me`, () => {
+    return HttpResponse.json({ id: 'u1', username: 'testuser', email: 'testuser@example.com', is_admin: true })
+  }),
+  http.put(`${BASE}/auth/username`, async ({ request }) => {
+    const body = (await request.json()) as { current_password: string; new_username: string }
+    if (body.current_password !== 'testpass') {
+      return HttpResponse.json({ detail: 'Current password is incorrect' }, { status: 400 })
+    }
+    return HttpResponse.json({ id: 'u1', username: body.new_username, email: 'testuser@example.com', is_admin: true })
+  }),
+  http.put(`${BASE}/auth/email`, async ({ request }) => {
+    const body = (await request.json()) as { current_password: string; new_email: string }
+    if (body.current_password !== 'testpass') {
+      return HttpResponse.json({ detail: 'Current password is incorrect' }, { status: 400 })
+    }
+    return HttpResponse.json({ id: 'u1', username: 'testuser', email: body.new_email.trim().toLowerCase(), is_admin: true })
+  }),
+
   // Sessions list
   http.get(`${BASE}/sessions`, () => {
     return HttpResponse.json([fixtureSession])

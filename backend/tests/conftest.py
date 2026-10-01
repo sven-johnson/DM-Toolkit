@@ -71,6 +71,7 @@ def reset_db():
             User(
                 id=str(uuid.uuid4()),
                 username="testuser",
+                email="testuser@example.com",
                 hashed_password=_ph.hash("testpass"),
                 is_admin=True,
             )
@@ -80,6 +81,15 @@ def reset_db():
         db.close()
     yield
     Base.metadata.drop_all(bind=TEST_ENGINE)
+
+
+@pytest.fixture
+def db():
+    session = TestingSessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
 
 
 @pytest.fixture

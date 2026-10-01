@@ -168,8 +168,9 @@ function EditUsernameModal({ currentUsername, onClose, onSaved }: EditUsernameMo
       <div className="modal-box" onClick={(e) => e.stopPropagation()}>
         <h2 className="modal-title">Change Username</h2>
         <div className="form-group">
-          <label className="form-label">New username</label>
+          <label className="form-label" htmlFor="edit-username-input">New username</label>
           <input
+            id="edit-username-input"
             className="input"
             value={newUsername}
             onChange={(e) => setNewUsername(e.target.value)}
@@ -177,8 +178,93 @@ function EditUsernameModal({ currentUsername, onClose, onSaved }: EditUsernameMo
           />
         </div>
         <div className="form-group">
-          <label className="form-label">Current password</label>
+          <label className="form-label" htmlFor="edit-username-password">Current password</label>
           <input
+            id="edit-username-password"
+            className="input"
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleSave() }}
+          />
+        </div>
+        {error && <p className="form-error">{error}</p>}
+        <div className="modal-actions">
+          <button className="btn-ghost" type="button" onClick={onClose}>Cancel</button>
+          <button className="btn-primary" type="button" onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Email edit modal
+// ---------------------------------------------------------------------------
+
+interface EditEmailModalProps {
+  currentEmail: string
+  onClose: () => void
+  onSaved: (newEmail: string) => void
+}
+
+function EditEmailModal({ currentEmail, onClose, onSaved }: EditEmailModalProps) {
+  const isPlaceholder = currentEmail.endsWith('@placeholder.invalid')
+  const [newEmail, setNewEmail] = useState(isPlaceholder ? '' : currentEmail)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [onClose])
+
+  async function handleSave() {
+    setError('')
+    const trimmed = newEmail.trim()
+    if (!trimmed) { setError('Email cannot be empty.'); return }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) { setError('Please enter a valid email address.'); return }
+    if (!currentPassword) { setError('Please enter your current password.'); return }
+    setSaving(true)
+    try {
+      const { data } = await apiClient.put<{ email: string }>('/auth/email', {
+        current_password: currentPassword,
+        new_email: newEmail.trim(),
+      })
+      onSaved(data.email)
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setError(msg ?? 'Failed to update email.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+        <h2 className="modal-title">Change Email</h2>
+        <div className="form-group">
+          <label className="form-label" htmlFor="edit-email-input">New email</label>
+          <input
+            id="edit-email-input"
+            className="input"
+            type="email"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            autoFocus
+          />
+        </div>
+        <div className="form-group">
+          <label className="form-label" htmlFor="edit-email-password">Current password</label>
+          <input
+            id="edit-email-password"
             className="input"
             type="password"
             value={currentPassword}
@@ -205,8 +291,10 @@ function EditUsernameModal({ currentUsername, onClose, onSaved }: EditUsernameMo
 export function UserSettingsPage() {
   const { theme, setTheme } = useTheme()
   const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [loadingUser, setLoadingUser] = useState(true)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showEditEmailModal, setShowEditEmailModal] = useState(false)
 
   // Password form
   const [currentPassword, setCurrentPassword] = useState('')
@@ -217,8 +305,11 @@ export function UserSettingsPage() {
   const [savingPassword, setSavingPassword] = useState(false)
 
   useEffect(() => {
-    apiClient.get<{ username: string }>('/auth/me')
-      .then(({ data }) => setUsername(data.username))
+    apiClient.get<{ username: string; email: string }>('/auth/me')
+      .then(({ data }) => {
+        setUsername(data.username)
+        setEmail(data.email)
+      })
       .finally(() => setLoadingUser(false))
   }, [])
 
@@ -283,6 +374,21 @@ export function UserSettingsPage() {
             disabled={loadingUser}
           >
             Edit
+          </button>
+        </div>
+
+        <div className="settings-row">
+          <div className="settings-row-label">Email</div>
+          <div className="settings-row-value">
+            {loadingUser ? '…' : email.endsWith('@placeholder.invalid') ? 'Not set' : email}
+          </div>
+          <button
+            className="btn-ghost"
+            type="button"
+            onClick={() => setShowEditEmailModal(true)}
+            disabled={loadingUser}
+          >
+            {email.endsWith('@placeholder.invalid') ? 'Add email' : 'Edit'}
           </button>
         </div>
       </div>
@@ -365,6 +471,17 @@ export function UserSettingsPage() {
           onSaved={(name) => {
             setUsername(name)
             setShowEditModal(false)
+          }}
+        />
+      )}
+
+      {showEditEmailModal && (
+        <EditEmailModal
+          currentEmail={email}
+          onClose={() => setShowEditEmailModal(false)}
+          onSaved={(newEmail) => {
+            setEmail(newEmail)
+            setShowEditEmailModal(false)
           }}
         />
       )}

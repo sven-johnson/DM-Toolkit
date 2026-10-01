@@ -44,7 +44,16 @@ def seed_initial_user() -> None:
                 "to create the first account."
             )
         import uuid as _uuid
-        db.add(User(id=str(_uuid.uuid4()), username=username, hashed_password=ph.hash(password)))
+        from .utils import normalize_email
+
+        db.add(
+            User(
+                id=str(_uuid.uuid4()),
+                username=username,
+                email=normalize_email(f"{username}@placeholder.invalid"),
+                hashed_password=ph.hash(password),
+            )
+        )
         db.commit()
         print(f"[dm-toolkit] Created initial user '{username}'")
     finally:
@@ -119,9 +128,11 @@ from .schemas import (  # noqa: E402
     LoginRequest,
     MeResponse,
     TokenResponse,
+    UpdateEmailRequest,
     UpdatePasswordRequest,
     UpdateUsernameRequest,
 )
+from .utils import normalize_email  # noqa: E402
 
 
 def get_current_user(
@@ -169,7 +180,7 @@ def login(body: LoginRequest, db: DBSession = Depends(get_db)) -> TokenResponse:
 
 @router.get("/me", response_model=MeResponse)
 def get_me(user: User = Depends(get_current_user)) -> MeResponse:
-    return MeResponse(id=user.id, username=user.username, is_admin=user.is_admin)
+    return MeResponse(id=user.id, username=user.username, email=user.email, is_admin=user.is_admin)
 
 
 @router.put("/username", response_model=MeResponse)
@@ -191,7 +202,28 @@ def update_username(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already taken")
     user.username = new
     db.commit()
-    return MeResponse(username=user.username)
+    return MeResponse(id=user.id, username=user.username, email=user.email, is_admin=user.is_admin)
+
+
+@router.put("/email", response_model=MeResponse)
+def update_email(
+    body: UpdateEmailRequest,
+    current_username: str = Depends(verify_token),
+    db: DBSession = Depends(get_db),
+) -> MeResponse:
+    user = _get_user(current_username, db)
+    try:
+        ph.verify(user.hashed_password, body.current_password)
+    except VerifyMismatchError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
+    new = normalize_email(body.new_email)
+    if new != user.email:
+        taken = db.query(User).filter(User.email == new).first()
+        if taken and taken.id != user.id:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This email is already in use.")
+        user.email = new
+        db.commit()
+    return MeResponse(id=user.id, username=user.username, email=user.email, is_admin=user.is_admin)
 
 
 @router.put("/password", status_code=status.HTTP_204_NO_CONTENT)
