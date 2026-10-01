@@ -58,18 +58,34 @@ def test_update_scene_returns_full_schema(
     )
     assert resp.status_code == 200
     body = resp.json()
-    for field in ("id", "session_id", "title", "body", "order_index", "created_at", "updated_at"):
+    for field in ("id", "storyline_id", "title", "body", "order_index", "created_at", "updated_at"):
         assert field in body, f"Missing field: {field}"
 
 
-def test_delete_scene(
-    client: TestClient, auth_headers: dict, session_id: int, scene_id: int
-):
-    resp = client.delete(f"/scenes/{scene_id}", headers=auth_headers)
+def test_delete_scene(client: TestClient, auth_headers: dict, campaign_id: str):
+    # Attach the scene to a session via its storyline so we can verify the
+    # session's scene list afterward (scenes belong to storylines now, not sessions).
+    storyline = client.post(
+        f"/campaigns/{campaign_id}/storylines",
+        json={"title": "Test Storyline"},
+        headers=auth_headers,
+    ).json()
+    scene = client.post(
+        f"/campaigns/{campaign_id}/storylines/{storyline['id']}/scenes",
+        json={"title": "Test Scene", "body": "Test body"},
+        headers=auth_headers,
+    ).json()
+    session = client.post(
+        f"/campaigns/{campaign_id}/sessions",
+        json={"title": "Test Session", "storyline_id": storyline["id"]},
+        headers=auth_headers,
+    ).json()
+
+    resp = client.delete(f"/scenes/{scene['id']}", headers=auth_headers)
     assert resp.status_code == 204
 
     # Scene should be gone from the session
-    resp = client.get(f"/sessions/{session_id}", headers=auth_headers)
+    resp = client.get(f"/campaigns/{campaign_id}/sessions/{session['id']}", headers=auth_headers)
     assert len(resp.json()["scenes"]) == 0
 
 
@@ -79,11 +95,27 @@ def test_delete_scene_not_found(client: TestClient, auth_headers: dict):
 
 
 def test_delete_scene_does_not_delete_session(
-    client: TestClient, auth_headers: dict, session_id: int, scene_id: int
+    client: TestClient, auth_headers: dict, campaign_id: str
 ):
-    client.delete(f"/scenes/{scene_id}", headers=auth_headers)
+    storyline = client.post(
+        f"/campaigns/{campaign_id}/storylines",
+        json={"title": "Test Storyline"},
+        headers=auth_headers,
+    ).json()
+    scene = client.post(
+        f"/campaigns/{campaign_id}/storylines/{storyline['id']}/scenes",
+        json={"title": "Test Scene", "body": "Test body"},
+        headers=auth_headers,
+    ).json()
+    session = client.post(
+        f"/campaigns/{campaign_id}/sessions",
+        json={"title": "Test Session", "storyline_id": storyline["id"]},
+        headers=auth_headers,
+    ).json()
+
+    client.delete(f"/scenes/{scene['id']}", headers=auth_headers)
 
     # Session still exists
-    resp = client.get(f"/sessions/{session_id}", headers=auth_headers)
+    resp = client.get(f"/campaigns/{campaign_id}/sessions/{session['id']}", headers=auth_headers)
     assert resp.status_code == 200
-    assert resp.json()["id"] == session_id
+    assert resp.json()["id"] == session["id"]

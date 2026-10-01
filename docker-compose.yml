@@ -19,5 +19,25 @@ services:
       timeout: 5s
       retries: 5
 
+  # Separate MySQL instance for Playwright e2e runs, so they never touch dev data.
+  db_test:
+    image: mysql:8
+    container_name: dm_toolkit_db_test
+    environment:
+      MYSQL_ROOT_PASSWORD: testrootpassword
+      MYSQL_DATABASE: dm_toolkit_test
+      MYSQL_USER: dm_test_user
+      MYSQL_PASSWORD: dm_test_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_test_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ptestrootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   mysql_data:
+  mysql_test_data:

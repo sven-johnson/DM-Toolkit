@@ -34,18 +34,18 @@ def test_login_both_wrong(client: TestClient):
 
 
 def test_protected_endpoint_no_token(client: TestClient):
-    resp = client.get("/sessions")
+    resp = client.get("/campaigns")
     assert resp.status_code in (401, 403)  # varies by FastAPI version
 
 
 def test_protected_endpoint_invalid_token(client: TestClient):
     resp = client.get(
-        "/sessions", headers={"Authorization": "Bearer this.is.not.valid"}
+        "/campaigns", headers={"Authorization": "Bearer this.is.not.valid"}
     )
     assert resp.status_code == 401
     assert resp.json()["detail"] == "Invalid token"
 
 
 def test_protected_endpoint_malformed_header(client: TestClient):
-    resp = client.get("/sessions", headers={"Authorization": "NotBearer abc"})
+    resp = client.get("/campaigns", headers={"Authorization": "NotBearer abc"})
     assert resp.status_code in (401, 403)  # varies by FastAPI version

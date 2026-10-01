@@ -101,18 +101,42 @@ def auth_headers(client: TestClient) -> dict:
 
 
 @pytest.fixture
-def session_id(client: TestClient, auth_headers: dict) -> str:
+def campaign_id(client: TestClient, auth_headers: dict) -> str:
     resp = client.post(
-        "/sessions", json={"title": "Test Session"}, headers=auth_headers
+        "/campaigns", json={"name": "Test Campaign"}, headers=auth_headers
     )
     assert resp.status_code == 201
     return resp.json()["id"]
 
 
 @pytest.fixture
-def scene_id(client: TestClient, auth_headers: dict, session_id: str) -> str:
+def session_id(client: TestClient, auth_headers: dict, campaign_id: str) -> str:
     resp = client.post(
-        f"/sessions/{session_id}/scenes",
+        f"/campaigns/{campaign_id}/sessions",
+        json={"title": "Test Session"},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 201
+    return resp.json()["id"]
+
+
+@pytest.fixture
+def storyline_id(client: TestClient, auth_headers: dict, campaign_id: str) -> str:
+    resp = client.post(
+        f"/campaigns/{campaign_id}/storylines",
+        json={"title": "Test Storyline"},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 201
+    return resp.json()["id"]
+
+
+@pytest.fixture
+def scene_id(
+    client: TestClient, auth_headers: dict, campaign_id: str, storyline_id: str
+) -> str:
+    resp = client.post(
+        f"/campaigns/{campaign_id}/storylines/{storyline_id}/scenes",
         json={"title": "Test Scene", "body": "Test body"},
         headers=auth_headers,
     )
