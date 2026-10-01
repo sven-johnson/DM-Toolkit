@@ -426,6 +426,35 @@ class CampaignMember(Base):
     campaign: Mapped["Campaign"] = relationship("Campaign", back_populates="members")
 
 
+class Invite(Base):
+    __tablename__ = "invites"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    campaign_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("campaigns.id", ondelete="CASCADE"), nullable=True
+    )
+    role: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    invited_by_user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    accepted_by_user_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "(campaign_id IS NULL AND role IS NULL) OR (campaign_id IS NOT NULL AND role IS NOT NULL)",
+            name="ck_invites_campaign_role",
+        ),
+    )
+
+    campaign: Mapped["Campaign | None"] = relationship("Campaign")
+
+
 class GMProfile(Base):
     __tablename__ = "gm_profiles"
 
