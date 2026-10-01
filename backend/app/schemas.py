@@ -502,6 +502,43 @@ class UserOut(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Invites
+# ---------------------------------------------------------------------------
+
+
+class InviteCreate(BaseModel):
+    email: EmailStr
+    campaign_id: Optional[str] = None
+
+
+class InviteOut(BaseModel):
+    id: str
+    email: str
+    campaign_id: Optional[str]
+    role: Optional[str]
+    expires_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class InviteStatusOut(BaseModel):
+    mode: str
+    email: str
+    campaign_name: Optional[str]
+
+
+class InviteRegisterRequest(BaseModel):
+    email: EmailStr
+    username: str
+    password: str
+    confirm_password: str
+
+
+class InviteAcceptResponse(BaseModel):
+    campaign_id: str
+
+
+# ---------------------------------------------------------------------------
 # Reorder
 # ---------------------------------------------------------------------------
 
