@@ -1,24 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 import path from 'path'
-
-// Dedicated ports so the e2e backend/frontend never collide with a dev
-// session already running on 8000/3000/5173.
-const BACKEND_PORT = 8001
-const FRONTEND_PORT = 3001
-const FRONTEND_URL = `http://localhost:${FRONTEND_PORT}`
-const BACKEND_URL = `http://localhost:${BACKEND_PORT}`
-
-// Points at docker-compose's `db_test` service (see repo root docker-compose.yml) —
-// a separate MySQL instance/port from dev so e2e runs never touch dev data.
-// Start it with: docker compose up -d db_test
-const BACKEND_ENV = {
-  DATABASE_URL: 'mysql+pymysql://dm_test_user:dm_test_password@localhost:3307/dm_toolkit_test',
-  SECRET_KEY: 'e2e-test-secret-key-minimum-32-characters-long!!',
-  ACCESS_TOKEN_EXPIRE_MINUTES: '480',
-  INITIAL_USERNAME: 'admin',
-  INITIAL_PASSWORD: 'changeme',
-  FRONTEND_URL,
-}
+import { BACKEND_ENV, BACKEND_PORT, BACKEND_URL, FRONTEND_PORT, FRONTEND_URL } from './env'
 
 export default defineConfig({
   testDir: './tests',
@@ -29,10 +11,14 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: `python -m alembic upgrade head && python -m uvicorn app.main:app --host 127.0.0.1 --port ${BACKEND_PORT}`,
+      // Seeding is chained here (not via globalSetup) so it's strictly
+      // sequenced before the server starts accepting requests — /health
+      // doesn't touch the DB, so a globalSetup running concurrently with
+      // server startup could let a test slip in against a half-seeded DB.
+      command: `python -m alembic upgrade head && python scripts/seed_e2e.py && python -m uvicorn app.main:app --host 127.0.0.1 --port ${BACKEND_PORT}`,
       cwd: path.resolve(__dirname, '../backend'),
       url: `${BACKEND_URL}/health`,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       env: BACKEND_ENV,
       timeout: 60_000,
     },

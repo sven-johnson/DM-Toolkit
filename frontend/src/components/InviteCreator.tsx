@@ -90,6 +90,7 @@ export function InviteCreator({ campaignId }: InviteCreatorProps) {
               className="input"
               style={{ flex: 1 }}
               readOnly
+              data-testid="invite-link"
               value={link}
               onFocus={(e) => e.target.select()}
             />
