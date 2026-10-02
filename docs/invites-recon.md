@@ -9,7 +9,7 @@ Findings from inspecting the repo before implementing `docs/invite_only_access.m
 - Run (from `backend/`, with `.env` providing `DATABASE_URL`):
   - `alembic upgrade head`
   - `alembic downgrade -1`
-  - Production runs `alembic upgrade head` in `backend/start.sh` before `uvicorn`.
+  - Production runs `alembic upgrade head` in the root-level `start.sh` (invoked via `cd backend`) before `uvicorn` — **not** `backend/start.sh`, which was a dead, unused duplicate (removed; see the production incident this caused in the invite-only work's history).
 - **String-choice columns use `sa.String(N)` + `sa.CheckConstraint`, not MySQL `ENUM`**, in the most recent precedent (`0011_archetypes.py`). Older migrations (`0005`, `0014`, `0015`, `0018`) use native `sa.Enum`, but `String` + `CheckConstraint` is the pattern to follow for the new `invites.role` column and for the `invites_campaign_role` CHECK the spec asks for — this also matches `campaign_members.role`, which is `String(20)` with **no existing CHECK constraint** (enforced only in application code via `ROLE_HIERARCHY`).
 
 ## Auth mechanism
